@@ -1,6 +1,9 @@
 #pragma once
 
+#include <QApplication>
+#include <QDebug>
 #include <QSerialPort>
+#include <array>
 
 #define MODBUS_GET_HIGH_BYTE(data) (((data) >> 8) & 0xFF)
 #define MODBUS_GET_LOW_BYTE(data) ((data)&0xFF)
@@ -29,7 +32,7 @@
 /*
 
 
-Таблица	Тип элемента	Тип доступа
+Таблица	╬Тип элемента	Тип доступа
 Регистры флагов (Coils)	один бит	чтение и запись
 Дискретные входы (Discrete Inputs)	один бит	только чтение
 Регистры ввода (Input Registers)	16-битное слово	только чтение
@@ -150,13 +153,13 @@ FA+7	FA+6	FA+5	FA+4	FA+3	FA+2	FA+1	FA	…	0	…	0	FA+Q-1	FA+Q-2	…
 
 При ошибках второго типа подчинённое устройство отсылает сообщение об ошибке (если запрос адресован этому устройству; на широковещательные запросы ответ не отправляется). Признаком того, что ответ содержит сообщение об ошибке, является установленный старший бит номера функции. За номером функции, вместо обычных данных, следует код ошибки и, при необходимости, дополнительные данные об ошибке.
 
-                                                                                              Стандартные коды ошибок
-                                                                                              01 — Принятый код функции не может быть обработан.
-                                                                                              02 — Адрес данных, указанный в запросе, недоступен.
+Стандартные коды ошибок
+01 — Принятый код функции не может быть обработан.
+02 — Адрес данных, указанный в запросе, недоступен.
 03 — Значение, содержащееся в поле данных запроса, является недопустимой величиной.
 04 — Невосстанавливаемая ошибка имела место, пока ведомое устройство пыталось выполнить затребованное действие.
 05 — Ведомое устройство приняло запрос и обрабатывает его, но это требует много времени. Этот ответ предохраняет ведущее устройство от генерации ошибки тайм-аута.
-                   06 — Ведомое устройство занято обработкой команды. Ведущее устройство должно повторить сообщение позже, когда ведомое освободится.
+06 — Ведомое устройство занято обработкой команды. Ведущее устройство должно повторить сообщение позже, когда ведомое освободится.
 07 — Ведомое устройство не может выполнить программную функцию, заданную в запросе. Этот код возвращается для неуспешного программного запроса, использующего функции с номерами 13 или 14. Ведущее устройство должно запросить диагностическую информацию или информацию об ошибках от ведомого.
 08 — Ведомое устройство при чтении расширенной памяти обнаружило ошибку контроля четности. Главный может повторить запрос позже, но обычно в таких случаях требуется ремонт оборудования.
 Примеры
@@ -196,76 +199,310 @@ Slave→Master
 0x02	код ошибки
 0xC5	CRC младший байт
 0xF1	старший байт
+https://ru.wikipedia.org/wiki/Modbus
+https://habr.com/ru/company/advantech/blog/450234/
+
+
+
+Code	Text	Details
+1	Illegal Function	Function code received in the query is not recognized or allowed by slave
+2	Illegal Data Address	Data address of some or all the required entities are not allowed or do not exist in slave
+3	Illegal Data Value	Value is not accepted by slave
+4	Slave Device Failure	Unrecoverable error occurred while slave was attempting to perform requested action
+5	Acknowledge	Slave has accepted request and is processing it, but a long duration of time is required. This response is returned to prevent a timeout error from occurring in the master. Master can next issue a Poll Program Complete message to determine whether processing is completed
+6	Slave Device Busy	Slave is engaged in processing a long-duration command. Master should retry later
+7	Negative Acknowledge	Slave cannot perform the programming functions. Master should request diagnostic or error information from slave
+8	Memory Parity Error	Slave detected a parity error in memory. Master can retry the request, but service may be required on the slave device
+10	Gateway Path Unavailable	Specialized for Modbus gateways. Indicates a misconfigured gateway
+11	Gateway Target Device Failed to Respond	Specialized for Modbus gateways. Sent when slave fails to respond
+
+
+─━ │ ┃┄┅┆┇┈┉┊┋
+┌┍┎┏
+┐┑┒┓
+
+└┕┖┗
+┘┙┚┛
+├┝┞┟┠┡┢┣
+
+┤┥┦┧┨┩┪┫
+┬┭┮┯┰┱┲┳
+
+┴┵┶┷┸┹┺┻
+┼┽┾┿╀╁╂╃╄╅╆╇╈╉╊╋╌╍╎╏═║
+╒╓╔
+
+╕╖╗
+
+╘╙╚
+
+╛╜╝
+
+╞╟╠
+
+╡╢╣
+
+╤╥╦
+╧
+
+╨╩
+╪╫╬╴╵╶╷╸╹╺╻╼╽╾╿╿
+
+╱╲╳
+╭╮
+╯╰
+┌┬─┐╔╤═╗╔╦═╗
+├┼─┤╟┼─╢╠╬═╣
+└┴─┘╚╧═╝╚╩═╝
+
+Modbus function codes
+╔═══════════════════════════════════════════════════════════════════════════════╦═══════════════════════════════════╦═══════════════╦═════════════╗
+║ Function type                                                                 ║ Function name                     ║ Function code ║ Comment     ║
+╠═════════════╤═══════════════╤═════════════════════════════════════════════════╩═══════════════════════════════════╩═══════════════╩═════════════╣
+║             │               │ Physical Discrete Inputs                        │ Read Discrete Inputs              │ 2             │             ║*
+║             │               ├─────────────────────────────────────────────────┼───────────────────────────────────┼───────────────┼─────────────╢
+║             │               │                                                 │ Read Coils                        │ 1             │             ║*
+║             │ Bit access    │                                                 ├───────────────────────────────────┼───────────────┼─────────────╢
+║             │               │ Internal Bits or Physical Coils                 │ Write Single Coil                 │ 5             │             ║*
+║             │               │                                                 ├───────────────────────────────────┼───────────────┼─────────────╢
+║             │               │                                                 │ Write Multiple Coils              │ 15            │             ║*
+║             ├───────────────┼─────────────────────────────────────────────────┼───────────────────────────────────┼───────────────┼─────────────╢
+║             │               │ Physical Input Registers                        │ Read Input Registers              │ 4             │             ║*
+║             │               ├─────────────────────────────────────────────────┼───────────────────────────────────┼───────────────┼─────────────╢
+║             │               │                                                 │ Read Multiple Holding Registers   │ 3             │             ║*
+║             │               │                                                 ├───────────────────────────────────┼───────────────┼─────────────╢
+║ Data Access │               │                                                 │ Write Single Holding Register     │ 6             │             ║*
+║             │               │                                                 ├───────────────────────────────────┼───────────────┼─────────────╢
+║             │ 16-bit access │                                                 │ Write Multiple Holding Registers  │ 16            │             ║*
+║             │               │ Internal Registers or Physical Output Registers ├───────────────────────────────────┼───────────────┼─────────────╢
+║             │               │                                                 │ Read/Write Multiple Registers     │ 23            │             ║
+║             │               │                                                 ├───────────────────────────────────┼───────────────┼─────────────╢
+║             │               │                                                 │ Mask Write Register               │ 22            │             ║
+║             │               │                                                 ├───────────────────────────────────┼───────────────┼─────────────╢
+║             │               │                                                 │ Read FIFO Queue                   │ 24            │             ║
+║             ├───────────────┴─────────────────────────────────────────────────┼───────────────────────────────────┼───────────────┼─────────────╢
+║             │                                                                 │ Read File Record                  │ 20            │             ║
+║             │ File Record Access                                              ├───────────────────────────────────┼───────────────┼─────────────╢
+║             │                                                                 │ Write File Record                 │ 21            │             ║
+╟─────────────┴─────────────────────────────────────────────────────────────────┼───────────────────────────────────┼───────────────┼─────────────╢
+║                                                                               │ Read Exception Status             │ 7             │ serial only ║
+║                                                                               ├───────────────────────────────────┼───────────────┼─────────────╢
+║                                                                               │ Diagnostic                        │ 8             │ serial only ║
+║                                                                               ├───────────────────────────────────┼───────────────┼─────────────╢
+║                                                                               │ Get Com Event Counter             │ 11            │ serial only ║
+║ Diagnostics                                                                   ├───────────────────────────────────┼───────────────┼─────────────╢
+║                                                                               │ Get Com Event Log                 │ 12            │ serial only ║
+║                                                                               ├───────────────────────────────────┼───────────────┼─────────────╢
+║                                                                               │ Report Slave ID                   │ 17            │ serial only ║
+║                                                                               ├───────────────────────────────────┼───────────────┼─────────────╢
+║                                                                               │ Read Device Identification        │ 43            │             ║
+╟───────────────────────────────────────────────────────────────────────────────┼───────────────────────────────────┼───────────────┼─────────────╢
+║ Other                                                                         │ Encapsulated Interface Transport  │ 43            │             ║
+╚═══════════════════════════════════════════════════════════════════════════════╧═══════════════════════════════════╧═══════════════╧═════════════╝
+
+Object type         Access	Size	Address Space
+Coil                Read-write	1 bit	00001 - 09999
+Discrete input      Read-only	1 bit	10001 - 19999
+Input register      Read-only	16 bits	30001 - 39999
+Holding register    Read-write	16 bits	40001 - 49999
 
 */
+
+namespace ByteOrder {
+struct Swap16 {
+    Swap16() { }
+    template <size_t S>
+    Swap16(std::array<uint16_t, S>& values) {
+        for(auto& v : values) {
+            union {
+                uint8_t u8[2];
+                uint16_t u16;
+            } U{ .u16 = v };
+            std::swap(U.u8[0], U.u8[1]);
+        }
+    }
+    uint16_t operator()(uint16_t& val) {
+        union {
+            uint8_t u8[2];
+            uint16_t u16;
+        } U{ .u16 = val };
+        std::swap(U.u8[0], U.u8[1]);
+        return val;
+    }
+};
+
+struct ReverseData {
+    ReverseData() { }
+    template <size_t S>
+    ReverseData(std::array<uint16_t, S>& values) {
+        std::ranges::reverse(values);
+    }
+};
+
+using ABCD = std::tuple<>;
+using BADC = std::tuple<Swap16>;
+using CDAB = std::tuple<ReverseData>;
+using DCBA = std::tuple<Swap16, ReverseData>;
+
+}
+
+struct RequestPdu
+{
+    RequestPdu() {}
+};
 
 class MyModbus : public QSerialPort {
     Q_OBJECT
 
-    uint8_t m_address{};
+    uint8_t m_address{ 1 };
 
 public:
     explicit MyModbus(QObject* parent = nullptr);
 
     enum Error {
-
+        //  Text  Code // Details
+        IllegalFunction = 1, //Function code received in the query is not recognized or allowed by slave
+        IllegalDataAddress = 2, //Data address of some or all the required entities are not allowed or do not exist in slave
+        IllegalDataValue = 3, //Value is not accepted by slave
+        SlaveDeviceFailure = 4, //Unrecoverable error occurred while slave was attempting to perform requested action
+        Acknowledge = 5, //Slave has accepted request and is processing it, but a long duration of time is required. This response is returned to prevent a timeout error from occurring in the master. Master can next issue a Poll Program Complete message to determine whether processing is completed
+        SlaveDeviceBusy = 6, //Slave is engaged in processing a long-duration command. Master should retry later
+        NegativeAcknowledge = 7, //Slave cannot perform the programming functions. Master should request diagnostic or error information from slave
+        MemoryParityError = 8, //Slave detected a parity error in memory. Master can retry the request, but service may be required on the slave device
+        GatewayPathUnavailable = 10, //Specialized for Modbus gateways. Indicates a misconfigured gateway
+        GatewayTargetDeviceFailedToRespond = 11, //Specialized for Modbus gateways. Sent when slave fails to respond
     } m_error;
 
+    enum FunctionName {
+        ReadDiscreteInputs = 2,
+        ReadCoils = 1,
+        WriteSingleCoil = 5,
+        WriteMultipleCoils = 15,
+        ReadInputRegisters = 4,
+        ReadMultipleHoldingRegisters = 3, //
+        WriteSingleHoldingRegister = 6,
+        WriteMultipleHoldingRegisters = 16, //
+        ReadOrWriteMultipleRegisters = 23,
+        MaskWriteRegister = 22,
+        ReadFIFOQueue = 24,
+        ReadFileRecord = 20,
+        WriteFileRecord = 21,
+        ReadExceptionStatus = 7,
+        Diagnostic = 8,
+        GetComEventCounter = 11,
+        GetComEventLog = 12,
+        ReportSlaveID = 17,
+        ReadDeviceIdentification = 43,
+        EncapsulatedInterfaceTransport = 43,
+    };
+
+    template <class T, class... ByteOrdering>
+    bool readHoldingRegisters(uint16_t address, T& reg, std::tuple<ByteOrdering...>) {
+        qDebug(__FUNCTION__);
+        QApplication::processEvents();
+
+        constexpr uint16_t size = sizeof(std::decay_t<T>) / 2;
+
+        static_assert(!(sizeof(std::decay_t<T>) % 2), "bad data alinment");
+        static_assert(size <= 125, "bad data size");
+
+        QByteArray request;
+        request.append(m_address);
+        request.append(ReadMultipleHoldingRegisters);
+
+        request.append((address >> 8) & 0xFF);
+        request.append((address >> 0) & 0xFF);
+
+        request.append((size >> 8) & 0xFF);
+        request.append((size >> 0) & 0xFF);
+
+        auto crc = crc16(request);
+
+        request.append((crc >> 8) & 0xFF);
+        request.append((crc >> 0) & 0xFF);
+
+        qDebug() << "request" << request.toHex('|').toUpper();
+
+        //flush();
+        write(request);
+
+        waitForReadyRead(100);
+
+        QByteArray response{ readAll() };
+        qDebug() << "response" << response.toHex('|').toUpper();
+
+        using Array = std::array<uint16_t, size>;
+        union U {
+            Array data16{};
+            T val;
+        } u;
+        u.data16 = *reinterpret_cast<Array*>(response.data() + 3);
+        (ByteOrdering(u.data16), ...);
+        reg = u.val;
+        return true;
+    }
+
+    template <class T, class... ByteOrdering>
+    bool writeHoldingRegisters(uint16_t address, T&& reg, std::tuple<ByteOrdering...>) {
+        qDebug(__FUNCTION__);
+        QApplication::processEvents();
+        //        QByteArray data;
+        //        data.append(m_address);
+
+        //        uint16_t size = ceil(sizeof(T) / 2);
+        //        union U {
+        //            std::array<uint16_t, sizeof(T) / 2> data16{};
+        //            std::decay_t<T> val;
+        //        } u;
+
+        //        u.val = reg;
+
+        //        (ByteOrdering(u.data16), ...);
+
+        //        if constexpr(sizeof(std::decay_t<T>) == 2) {
+        //            data.append(m_address);
+        //        } else {
+        //            data.append(m_address);
+        //        }
+        return true;
+    }
+
+    //private:
     //    int set_slave(int slave);
     //    int get_slave();
     //    //    int set_error_recovery(error_recovery_mode error_recovery);
-
     //    int get_response_timeout(uint32_t* to_sec, uint32_t* to_usec);
     //    int set_response_timeout(uint32_t to_sec, uint32_t to_usec);
-
     //    int get_byte_timeout(uint32_t* to_sec, uint32_t* to_usec);
     //    int set_byte_timeout(uint32_t to_sec, uint32_t to_usec);
-
     //    int get_indication_timeout(uint32_t* to_sec, uint32_t* to_usec);
     //    int set_indication_timeout(uint32_t to_sec, uint32_t to_usec);
-
     //    int get_header_length();
-
     //    int connect();
     //    void close();
-
     //    void free();
-
     //    int flush();
     //    int set_debug(int flag);
-
     //    const char* strerror(int errnum);
-
     //    int read_registers(int addr, int nb, uint16_t* dest);
     //    int write_registers(int addr, int nb, const uint16_t* data);
-
     //    int read_bits(int addr, int nb, uint8_t* dest);
     //    int write_bits(int addr, int nb, const uint8_t* data);
-
     //    int write_bit(int coil_addr, int status);
-
     //    int read_input_bits(int addr, int nb, uint8_t* dest);
     //    int read_input_registers(int addr, int nb, uint16_t* dest);
-
     //    int write_register(int reg_addr, const uint16_t value);
-
     //    int mask_write_register(int addr, uint16_t and_mask, uint16_t or_mask);
     //    int write_and_read_registers(int write_addr, int write_nb, const uint16_t* src, int read_addr, int read_nb, uint16_t* dest);
     //    int report_slave_id(int max_dest, uint8_t* dest);
-
     //    //    mapping_t* mapping_new_start_address(unsigned int start_bits, unsigned int nb_bits, unsigned int start_input_bits, unsigned int nb_input_bits, unsigned int start_registers, unsigned int nb_registers, unsigned int start_input_registers, unsigned int nb_input_registers);
     //    //    mapping_t* mapping_new(int nb_bits, int nb_input_bits, int nb_registers, int nb_input_registers);
     //    //    void mapping_free(mapping_t* mb_mapping);
-
     //    int send_raw_request(const uint8_t* raw_req, int raw_req_length);
-
     //    int receive(uint8_t* req);
-
     //    int receive_confirmation(uint8_t* rsp);
-
     //    //    int reply(const uint8_t* req, int req_length, mapping_t* mb_mapping);
     //    int reply_exception(const uint8_t* req, unsigned int exception_code);
-
     //    // UTILS FUNCTIONS
 
     uint8_t address() const;
@@ -273,6 +510,8 @@ public:
 
     Error error() const;
     QString errorString() const { return {}; }
+
+    uint16_t crc16(const QByteArray& data);
 
 signals:
 };

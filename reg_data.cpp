@@ -90,7 +90,7 @@ void Data::setModelData(QWidget* editor) {
             auto sbx = qobject_cast<QDoubleSpinBox*>(editor);
             arg = sbx->value();
         }
-        I::modbus()->writeRegisters(id, arg, LibModbus::DataSR{});
+        I::mymodbus()->writeHoldingRegisters(id, arg, LibModbus::DataSR{});
     },
                       const_cast<variant&>(data));
 }

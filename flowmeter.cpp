@@ -76,7 +76,7 @@ void Flowmeter::initCbxPorts() {
     rng::sort(spInfos, {}, [](const QSerialPortInfo& pi) { return pi.portName().midRef(3).toUInt(); });
     for(auto&& pi : spInfos)
         ui->cbxPorts->addItem(pi.portName());
-    connect(ui->cbxPorts, &QComboBox::currentTextChanged, I::modbus(), &LibModbus::setPortName);
+    //connect(ui->cbxPorts, &QComboBox::currentTextChanged, I::mymodbus(), &MyModbus::setPortName);
 }
 
 void Flowmeter::initTableView() {
@@ -203,11 +203,11 @@ void Flowmeter::read(QModelIndex&& index) {
         bool result{};
         auto reg = index.siblingAtColumn(Reg::Model::Id).data(Qt::UserRole).toUInt();
         /**/ if constexpr(std::is_same_v<T, Reg::Text>)
-            result = I::modbus()->readRegisters(reg, arg, LibModbus::DataN{}); //USonicFlowmeter
+            result = I::mymodbus()->readHoldingRegisters(reg, arg, LibModbus::DataN{}); //USonicFlowmeter
         else if constexpr(std::is_same_v<T, Reg::SetLinaCoef>)
-            result = I::modbus()->readRegisters(reg, arg, LibModbus::DataS{});
+            result = I::mymodbus()->readHoldingRegisters(reg, arg, LibModbus::DataS{});
         else
-            result = I::modbus()->readRegisters(reg, arg, LibModbus::DataSR{});
+            result = I::mymodbus()->readHoldingRegisters(reg, arg, LibModbus::DataSR{});
 
         if(result) {
             model->setData(index.siblingAtColumn(Reg::Model::Error), "");
@@ -215,7 +215,7 @@ void Flowmeter::read(QModelIndex&& index) {
             emit model->dataChanged(index.siblingAtColumn(Reg::Model::Value), index.siblingAtColumn(Reg::Model::Error), {Qt::DisplayRole});
         } else {
             index = index.siblingAtColumn(Reg::Model::Error);
-            model->setData(index, I::modbus()->errorString());
+            model->setData(index, I::mymodbus()->errorString());
             emit model->dataChanged(index, index, {Qt::DisplayRole});
         }
     };
