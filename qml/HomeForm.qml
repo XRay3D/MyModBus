@@ -6,10 +6,10 @@ Page {
     title: qsTr("Home")
 
     //    Component.onCompleted: {
-    //        tableView.forceLayout()
+    //        tvHoldingRegisters.forceLayout()
     //    }
     TableView {
-        id: tableView
+        id: tvHoldingRegisters
         anchors.fill: parent
         model: regModel
         reuseItems: true
@@ -22,12 +22,12 @@ Page {
         //        }
         Row {
             id: columnsHeader
-            y: tableView.contentY
+            y: tvHoldingRegisters.contentY
             z: 2
             Repeater {
-                model: tableView.columns > 0 ? tableView.columns : 1
+                model: tvHoldingRegisters.columns > 0 ? tvHoldingRegisters.columns : 1
                 Label {
-                    width: tableView.columnWidths[index]
+                    width: tvHoldingRegisters.columnWidths[index]
                     text: regModel.headerData(index, Qt.Horizontal)
                     padding: 3
                     verticalAlignment: Text.AlignVCenter
@@ -58,13 +58,13 @@ Page {
                 text: display
                 elide: Text.ElideRight
                 onTextChanged: {
-                    //                    if (tableView.columnWidths[column] == null)
-                    //                        tableView.columnWidths[column] = 10
-                    //                    else if (tableView.columnWidths[column] < implicitWidth)
-                    //                        tableView.columnWidths[column] = implicitWidth
+                    //                    if (tvHoldingRegisters.columnWidths[column] == null)
+                    //                        tvHoldingRegisters.columnWidths[column] = 10
+                    //                    else if (tvHoldingRegisters.columnWidths[column] < implicitWidth)
+                    //                        tvHoldingRegisters.columnWidths[column] = implicitWidth
                     //                    //                    }
-                    //                    console.log(tableView.view, column, implicitWidth)
-                    tableView.forceLayout()
+                    //                    console.log(tvHoldingRegisters.view, column, implicitWidth)
+                    tvHoldingRegisters.forceLayout()
                 }
             }
         }

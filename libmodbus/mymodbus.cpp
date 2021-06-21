@@ -61,7 +61,8 @@ static const uint8_t table_crc_lo[] = {
 };
 
 MyModbus::MyModbus(QObject* parent)
-    : QSerialPort(parent) {
+    : QSerialPort(parent)
+{
     setPortName("COM28");
     setBaudRate(Baud115200);
     setParity(NoParity);
@@ -73,15 +74,15 @@ MyModbus::MyModbus(QObject* parent)
 
 MyModbus::Error MyModbus::error() const { return m_error; }
 
-uint16_t MyModbus::crc16(const QByteArray& data) {
+uint16_t MyModbus::crc16(const QByteArray& data)
+{
     uint8_t crc_hi = 0xFF; /* high CRC byte initialized */
     uint8_t crc_lo = 0xFF; /* low CRC byte initialized */
-    for(auto&& byte : data) {
-        auto i = crc_hi ^ byte; /* calculate the CRC  */ /* will index into CRC lookup */
+    for (auto&& byte : data) {
+        auto i = crc_hi ^ static_cast<uint8_t>(byte); /* calculate the CRC  */ /* will index into CRC lookup */
         crc_hi = crc_lo ^ table_crc_hi[i];
         crc_lo = table_crc_lo[i];
     }
-
     return (crc_hi << 8 | crc_lo);
 }
 

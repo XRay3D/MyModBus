@@ -5,7 +5,7 @@
 #include <variant>
 
 class QStyleOptionViewItem;
-namespace Reg {
+namespace HoldingRegisters {
 
 //auto getType(auto&& arg) {
 //    struct {
@@ -15,7 +15,7 @@ namespace Reg {
 //}
 
 struct Text {
-    char data[16]{};
+    char data[16] {};
 };
 
 struct LinaCoef {
@@ -32,7 +32,6 @@ struct SetLinaCoef {
     auto end() const { return coef + size; }
 };
 
-enum { Offset = 1 };
 struct Data {
     using variant = std::variant<uint16_t, uint32_t, float, Text, SetLinaCoef>;
     enum Acces {
@@ -40,7 +39,7 @@ struct Data {
         ReadWrite
     };
     Q_ENUM(Acces)
-
+    enum { Offset = 1 };
     enum ID : uint16_t {
         REG_01 = 0x0000,
         REG_02 = REG_01 + Offset,
@@ -60,7 +59,7 @@ struct Data {
         REG_16 = REG_15 + Offset,
         REG_17 = REG_16 + Offset,
         REG_18 = REG_17 + Offset,
-        REG_19 = REG_18 + Offset,
+        REG_19 = REG_18 + Offset * 2,
         //        REG_20 = REG_19 + Offset,
         /*        ID_BLOADER = 0xFFF0,
         ID_PAR_ADDR = 0x0408,
@@ -180,7 +179,7 @@ struct Data {
     ID id;
     variant data;
     Acces acces;
-    QString error{};
+    QString error {};
 
     QVariant toVariant() const;
 
@@ -197,6 +196,6 @@ struct Data {
 
 } // namespace Reg
 
-Q_DECLARE_METATYPE(Reg::Text)
-Q_DECLARE_METATYPE(Reg::Data)
-Q_DECLARE_METATYPE(Reg::SetLinaCoef)
+Q_DECLARE_METATYPE(HoldingRegisters::Text)
+Q_DECLARE_METATYPE(HoldingRegisters::Data)
+Q_DECLARE_METATYPE(HoldingRegisters::SetLinaCoef)

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <QStyledItemDelegate>
-namespace Reg {
+namespace HoldingRegisters {
 
 class ItemDelegate : public QStyledItemDelegate {
     //Q_OBJECT

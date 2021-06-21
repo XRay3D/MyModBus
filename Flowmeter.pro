@@ -1,4 +1,4 @@
-QT += core gui serialport serialbus quick
+QT += core gui serialport serialbus #quick
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -20,24 +20,30 @@ DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000
 
 SOURCES += \
     DataBase.cpp \
-    flowmeter.cpp \
+    coils/coils_model.cpp \
+    holdingregisters/hldreg_data.cpp \
+    holdingregisters/hldreg_delegate.cpp \
+    holdingregisters/hldreg_model.cpp \
     interface.cpp \
     main.cpp \
-    reg_data.cpp \
-    regitemdelegate.cpp \
-    regmodel.cpp \
+    mainwindow.cpp \
+    modelinputdiscrete.cpp \
+    modelinputregisters.cpp \
 
 
 HEADERS += \
     EnumHelper.h \
-    flowmeter.h \
+    coils/coils_model.h \
+    holdingregisters/hldreg_data.h \
+    holdingregisters/hldreg_delegate.h \
+    holdingregisters/hldreg_model.h \
     interface.h \
-    reg_data.h \
-    regitemdelegate.h \
-    regmodel.h \
+    mainwindow.h \
+    modelinputdiscrete.h \
+    modelinputregisters.h \
 
 FORMS += \
-    flowmeter.ui \
+    mainwindow.ui
 
 
 TRANSLATIONS += \
@@ -48,7 +54,8 @@ DISTFILES += \
 #    DataBase.c \
 
 INCLUDEPATH += \
-    magic_get/include/
+    magic_get/include/ \
+    holdingregisters \
 
 include(libmodbus/libmodbus.pri)
 
