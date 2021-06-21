@@ -19,7 +19,7 @@ int main(int argc, char* argv[])
 
     QApplication app(argc, argv);
 
-    QApplication::setApplicationName("FMeter_Clb");
+    QApplication::setApplicationName("FlowMeter");
     QApplication::setOrganizationName("Elemer");
 
     //    QFont font;
@@ -57,7 +57,6 @@ int main(int argc, char* argv[])
     //            },
     //            Qt::QueuedConnection);
     //        engine.load(url);
-
     //        w.model()->setObjectName("regModel");
     //        engine.rootContext()->setContextProperty("regModel", w.model());
     //    }

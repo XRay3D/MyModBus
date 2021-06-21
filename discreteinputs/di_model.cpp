@@ -1,28 +1,29 @@
-#include "coils_model.h"
+#include "di_model.h"
 #include "EnumHelper.h"
 #include "interface.h"
 
 #include <QColor>
 
-namespace Coils {
+namespace DiscreteInputs {
+
 Model::Model(QObject* parent)
     : QAbstractTableModel(parent)
     , m_data {
-          {Data::COIL_00},
-          {Data::COIL_01},
-          {Data::COIL_02},
-          {Data::COIL_03},
-          {Data::COIL_04},
-          {Data::COIL_05},
-          {Data::COIL_06},
-          {Data::COIL_07},
-          {Data::COIL_08},
-          {Data::COIL_09},
-          {Data::COIL_10},
-          //        { Data::COIL_11 },
-          //        { Data::COIL_12 },
-          //        { Data::COIL_13 },
-          //        { Data::COIL_14 },
+          {Data::DI_00},
+          {Data::DI_01},
+          {Data::DI_02},
+          {Data::DI_03},
+          {Data::DI_04},
+          {Data::DI_05},
+          {Data::DI_06},
+          {Data::DI_07},
+          {Data::DI_08},
+          {Data::DI_09},
+          {Data::DI_10},
+          //        { Data::DI_11 },
+          //        { Data::DI_12 },
+          //        { Data::DI_13 },
+          //        { Data::DI_14 },
       } {
 }
 

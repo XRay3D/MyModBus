@@ -9,6 +9,9 @@ class Model;
 namespace Coils {
 class Model;
 }
+namespace DiscreteInputs {
+class Model;
+}
 namespace Ui {
 class MainWindow;
 }
@@ -24,10 +27,7 @@ public:
 
 private slots:
     void regDataGen();
-    void on_pbReadAll_clicked();
     void on_pbReadSelected_clicked();
-
-    void on_pbReadAllCl_clicked();
 
 private:
     Ui::MainWindow* ui;
@@ -39,7 +39,9 @@ private:
 
     void readHr(QModelIndex&& index);
     void readCl(QModelIndex&& index);
+    void readDi(QModelIndex&& index);
 
     HoldingRegisters::Model* m_hrModel;
     Coils::Model* m_clModel;
+    DiscreteInputs::Model* m_diModel;
 };

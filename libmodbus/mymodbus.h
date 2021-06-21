@@ -22,14 +22,13 @@ struct PDU {
 class MyModbus : public QSerialPort {
     Q_OBJECT
 
-    uint8_t m_address { 1 };
+    uint8_t m_address {1};
     QString m_errorString;
 
-    QByteArray request;
-    QByteArray response;
+    std::vector<std::byte> request;
+    std::vector<std::byte> response;
 
-    void prepare()
-    {
+    void prepare() {
         request.clear();
         response.clear();
         m_errorString.clear();
@@ -55,6 +54,7 @@ public:
         GatewayTargetDeviceFailedToRespond = 11, //Specialized for Modbus gateways. Sent when slave fails to respond
     } m_error {};
     Q_ENUM(Error)
+
     enum FunctionName {
         ReadDiscreteInputs = 2,
         ReadCoils = 1,
@@ -79,22 +79,9 @@ public:
     };
     Q_ENUM(FunctionName)
 
-    void add08(QByteArray& arr, uint8_t data) { arr.append(data); }
-    void add16(QByteArray& arr, uint16_t data)
-    {
-        union {
-            uint16_t d;
-            uint8_t byte[2];
-        } u { .d = data };
-        arr.append(u.byte[1]);
-        arr.append(u.byte[0]);
-    }
-    template <class T>
-    void addT(QByteArray& arr, T& data) { arr.append(QByteArray::fromRawData(reinterpret_cast<const char*>(std::addressof(data)), sizeof(T))); }
     ///////////////////////////////////// HoldingRegisters
     template <class T, class... ByteOrdering>
-    bool readHoldingRegisters(uint16_t regAddress, T& regData, std::tuple<ByteOrdering...>)
-    {
+    bool readHoldingRegisters(uint16_t regAddress, T& regData, std::tuple<ByteOrdering...>) {
         using Ty = std::decay_t<T>;
         constexpr uint16_t size = sizeof(Ty) / 2;
         static_assert(!(sizeof(Ty) % 2), "bad data alinment");
@@ -109,20 +96,15 @@ public:
             add16(request, size);
             auto crc = crc16(request);
             add16(request, crc);
-            qDebug() << "request" << request.toHex('|').toUpper();
-            write(request);
+            writeRequest();
         }
 
         { // read
             waitForReadyRead(100);
-            response.append(read(5));
-            if (response[1] & 0x80) {
-                m_errorString = EnumHelper::toString(m_error = static_cast<Error>(response.data()[2]));
-                qDebug() << "err response" << response.toHex('|').toUpper();
-                return {};
-            }
-            response.append(read(*reinterpret_cast<uint16_t*>(response.data() + 2) + 1));
-            qDebug() << "response" << response.toHex('|').toUpper();
+            if(!readAndCheck())
+                return false;
+            readResponse(*reinterpret_cast<uint16_t*>(response.data() + 2) + 1);
+            logResponse();
             Ty& tmp = *reinterpret_cast<T*>(response.data() + 3);
             ByteOrder::reorder<Ty, ByteOrdering...>(tmp);
             regData = tmp;
@@ -131,8 +113,7 @@ public:
     }
 
     template <class T, class... ByteOrdering>
-    bool writeHoldingRegisters(uint16_t regAddress, T&& regData, std::tuple<ByteOrdering...>)
-    {
+    bool writeHoldingRegisters(uint16_t regAddress, T&& regData, std::tuple<ByteOrdering...>) {
         using Ty = std::decay_t<T>;
         constexpr uint16_t size = sizeof(Ty) / 2;
         static_assert(!(sizeof(Ty) % 2), "bad data alinment");
@@ -144,7 +125,7 @@ public:
             auto tmp = regData;
             ByteOrder::reorder<Ty, ByteOrdering...>(tmp);
             add08(request, m_address);
-            if constexpr (size == 1) {
+            if constexpr(size == 1) {
                 add08(request, WriteSingleHoldingRegister);
                 add16(request, regAddress);
                 addT(request, tmp);
@@ -157,74 +138,64 @@ public:
             }
             auto crc = crc16(request);
             add16(request, crc);
-            qDebug() << "request" << request.toHex('|').toUpper();
-            write(request);
+            writeRequest();
         }
 
         { // read
             waitForReadyRead(1000);
-            response.append(read(5));
-            if (response[1] & 0x80) {
-                m_errorString = EnumHelper::toString(m_error = static_cast<Error>(response.data()[2]));
-                qDebug() << "err response" << response.toHex('|').toUpper();
-                return {};
-            }
-            response.append(read(3));
-            qDebug() << "response" << response.toHex('|').toUpper();
+            if(!readAndCheck())
+                return false;
+            readResponse(3);
+            logResponse();
         }
         return true;
     }
 
     ///////////////////////////////////// Coils
     template <class T>
-    bool readCoils(uint16_t regAddress, T& coils)
-    {
+    bool readCoils(uint16_t regAddress, T& coils) {
         qDebug(__FUNCTION__);
         prepare();
         {
             add08(request, m_address);
             add08(request, ReadCoils);
             add16(request, regAddress);
-            if constexpr (/*std::size(coils) ||*/ std::is_array_v<T>) {
+            if constexpr(/*std::size(coils) ||*/ std::is_array_v<T>) {
                 add16(request, static_cast<uint16_t>(std::size(coils)));
             } else {
                 add16(request, 1);
             }
             auto crc = crc16(request);
             add16(request, crc);
-            qDebug() << "request" << request.toHex('|').toUpper();
-            write(request);
+            writeRequest();
         }
 
         { // read
             waitForReadyRead(1000);
-            response.append(read(5));
-            if (response[1] & 0x80) {
-                m_errorString = EnumHelper::toString(m_error = static_cast<Error>(response.data()[2]));
-                qDebug() << "err response" << response.toHex('|').toUpper();
-                return {};
-            }
-            int size = *reinterpret_cast<uint8_t*>(response.data() + 2);
-            response.append(read(size));
-            if constexpr (/*std::size(coils) || */ std::is_array_v<T>) {
+            if(!readAndCheck())
+                return false;
+            size_t size = *reinterpret_cast<uint8_t*>(response.data() + 2);
+            readResponse(size);
+            if constexpr(/*std::size(coils) || */ std::is_array_v<T>) {
                 int ctr {};
-                for (char c : response.mid(3, size)) {
-                    for (int m = 1; m < 0x100; m <<= 1) {
+                for(std::byte c : std::span<std::byte> {response.begin() + 3, size}) {
+                    std::byte m {0x01};
+                    for(int i = 1; i < 8; ++i, m <<= 1) {
                         coils[ctr++] = static_cast<bool>(c & m);
-                        if (ctr == std::size(coils))
+                        if(ctr == std::size(coils))
                             break;
                     }
                 }
             } else {
                 coils = static_cast<bool>(response[3]);
             }
-            qDebug() << "response" << response.toHex('|').toUpper();
+            logResponse();
         }
         return true;
     }
+
     template <class T>
-    bool writeSingleCoil(uint16_t regAddress, T&& coils)
-    {
+    bool writeSingleCoil(uint16_t regAddress, T&& coils) {
         qDebug(__FUNCTION__);
         prepare();
         { // write
@@ -234,20 +205,15 @@ public:
             add16(request, static_cast<bool>(coils) ? 0xFF00 : 0x0000);
             auto crc = crc16(request);
             add16(request, crc);
-            qDebug() << "request" << request.toHex('|').toUpper();
-            write(request);
+            writeRequest();
         }
 
         { // read
             waitForReadyRead(1000);
-            response.append(read(5));
-            if (response[1] & 0x80) {
-                m_errorString = EnumHelper::toString(m_error = static_cast<Error>(response.data()[2]));
-                qDebug() << "err response" << response.toHex('|').toUpper();
-                return {};
-            }
-            response.append(read(3));
-            qDebug() << "response" << response.toHex('|').toUpper();
+            if(!readAndCheck())
+                return false;
+            readResponse(3);
+            logResponse();
         }
         return true;
     }
@@ -263,16 +229,8 @@ public:
     template <typename T, size_t N>
     array_size(T(&&)[N]) -> array_size<T, N>;
 
-    void check(int const (&param)[3])
-    {
-        int local[] { 1, 2, 3 };
-        [[maybe_unused]] constexpr size_t s0 = array_size(local); // ok
-        [[maybe_unused]] constexpr size_t s1 = array_size(decltype(param) {}); // ok
-    }
-
     template <class T>
-    bool writeMultipleCoils(uint16_t regAddress, T& coils) requires std::is_array_v<T>
-    {
+    bool writeMultipleCoils(uint16_t regAddress, T& coils) requires std::is_array_v<T> {
         qDebug(__FUNCTION__);
         prepare();
         { // write
@@ -287,11 +245,11 @@ public:
             uint8_t data[dataSize] {};
 
             int ctr {};
-            for (auto&& c : data) {
-                for (int m = 1; m < 0x100; m <<= 1) {
-                    if (coils[ctr++])
+            for(auto&& c : data) {
+                for(int m = 1; m < 0x100; m <<= 1) {
+                    if(coils[ctr++])
                         c |= m;
-                    if (ctr == coilsCount)
+                    if(ctr == coilsCount)
                         break;
                 }
             }
@@ -302,20 +260,91 @@ public:
 
             auto crc = crc16(request);
             add16(request, crc);
-            qDebug() << "request" << request.toHex('|').toUpper();
-            write(request);
+            writeRequest();
         }
 
         { // read
             waitForReadyRead(1000);
-            response.append(read(5));
-            if (response[1] & 0x80) {
-                m_errorString = EnumHelper::toString(m_error = static_cast<Error>(response.data()[2]));
-                qDebug() << "err response" << response.toHex('|').toUpper();
-                return {};
+            if(!readAndCheck())
+                return false;
+            readResponse(3);
+            logResponse();
+        }
+        return true;
+    }
+
+    ///////////////////////////////////// DiscreteInputs
+    template <class T>
+    bool readDiscreteInputs(uint16_t regAddress, T& coils) {
+        qDebug(__FUNCTION__);
+        prepare();
+        {
+            add08(request, m_address);
+            add08(request, ReadDiscreteInputs);
+            add16(request, regAddress);
+            if constexpr(/*std::size(coils) ||*/ std::is_array_v<T>) {
+                add16(request, static_cast<uint16_t>(std::size(coils)));
+            } else {
+                add16(request, 1);
             }
-            response.append(read(3));
-            qDebug() << "response" << response.toHex('|').toUpper();
+            auto crc = crc16(request);
+            add16(request, crc);
+            writeRequest();
+        }
+
+        { // read
+            waitForReadyRead(1000);
+            if(!readAndCheck())
+                return false;
+            size_t size = *reinterpret_cast<uint8_t*>(response.data() + 2);
+            readResponse(size);
+            if constexpr(/*std::size(coils) || */ std::is_array_v<T>) {
+                int ctr {};
+                for(std::byte c : std::span<std::byte> {response.begin() + 3, size}) {
+                    std::byte m {0x01};
+                    for(int i = 1; i < 8; ++i, m <<= 1) {
+                        coils[ctr++] = static_cast<bool>(c & m);
+                        if(ctr == std::size(coils))
+                            break;
+                    }
+                }
+            } else {
+                coils = static_cast<bool>(response[3]);
+            }
+            logResponse();
+        }
+        return true;
+    }
+
+    ///////////////////////////////////// ReadInputRegisters
+    template <class T, class... ByteOrdering>
+    bool readInputRegisters(uint16_t regAddress, T& regData, std::tuple<ByteOrdering...>) {
+        using Ty = std::decay_t<T>;
+        constexpr uint16_t size = sizeof(Ty) / 2;
+        static_assert(!(sizeof(Ty) % 2), "bad data alinment");
+        static_assert(size <= 125, "bad data size");
+
+        qDebug(__FUNCTION__);
+        prepare();
+        { // write
+            add08(request, m_address);
+            add08(request, ReadInputRegisters);
+            add16(request, regAddress);
+            add16(request, size);
+            auto crc = crc16(request);
+            add16(request, crc);
+            writeRequest();
+        }
+
+        { // read
+            waitForReadyRead(100);
+            if(!readAndCheck())
+                return false;
+            readResponse(*reinterpret_cast<uint16_t*>(response.data() + 2) + 1);
+            logResponse();
+            Ty& tmp = *reinterpret_cast<T*>(response.data() + 3);
+            ByteOrder::reorder<Ty, ByteOrdering...>(tmp);
+            regData = tmp;
         }
         return true;
     }
@@ -326,7 +355,24 @@ public:
     Error error() const;
     QString errorString() const { return m_errorString; }
 
-    uint16_t crc16(const QByteArray& data);
+    uint16_t crc16(std::span<std::byte> data);
+
+private:
+    void add08(std::vector<std::byte>& arr, uint8_t data);
+    void add16(std::vector<std::byte>& arr, uint16_t data);
+    template <class T>
+    void addT(std::vector<std::byte>& arr, T& data) {
+        auto begin = reinterpret_cast<const std::byte*>(std::addressof(data));
+        auto end = reinterpret_cast<const std::byte*>(std::addressof(data)) + sizeof(T);
+        arr.insert(arr.end(), begin, end);
+    }
+
+    bool readAndCheck();
+    qint64 readResponse(int count);
+
+    void logResponse();
+    void logRequest();
+    qint64 writeRequest();
 
 signals:
 };

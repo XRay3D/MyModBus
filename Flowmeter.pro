@@ -21,6 +21,7 @@ DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000
 SOURCES += \
     DataBase.cpp \
     coils/coils_model.cpp \
+    discreteinputs/di_model.cpp \
     holdingregisters/hldreg_data.cpp \
     holdingregisters/hldreg_delegate.cpp \
     holdingregisters/hldreg_model.cpp \
@@ -34,6 +35,7 @@ SOURCES += \
 HEADERS += \
     EnumHelper.h \
     coils/coils_model.h \
+    discreteinputs/di_model.h \
     holdingregisters/hldreg_data.h \
     holdingregisters/hldreg_delegate.h \
     holdingregisters/hldreg_model.h \
@@ -66,13 +68,13 @@ include(libmodbus/libmodbus.pri)
 
 RESOURCES += \
     Image.qrc \
-    qml/qml.qrc
+#    qml/qml.qrc
 
 # Additional import path used to resolve QML modules in Qt Creator's code model
-QML_IMPORT_PATH =
+#QML_IMPORT_PATH =
 
 # Additional import path used to resolve QML modules just for Qt Quick Designer
-QML_DESIGNER_IMPORT_PATH =
+#QML_DESIGNER_IMPORT_PATH =
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin

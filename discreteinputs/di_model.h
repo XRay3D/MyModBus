@@ -1,7 +1,9 @@
 #pragma once
 
 #include <QAbstractTableModel>
-namespace Coils {
+
+namespace DiscreteInputs {
+
 struct Data {
     enum Acces {
         ReadOnly,
@@ -10,27 +12,27 @@ struct Data {
     Q_ENUM(Acces)
     enum { Offset = 1 };
     enum ID : uint16_t {
-        COIL_00,
-        COIL_01,
-        COIL_02,
-        COIL_03,
-        COIL_04,
-        COIL_05,
-        COIL_06,
-        COIL_07,
-        COIL_08,
-        COIL_09,
-        COIL_10,
-        COIL_11,
-        COIL_12,
-        COIL_13,
-        COIL_14,
+        DI_00,
+        DI_01,
+        DI_02,
+        DI_03,
+        DI_04,
+        DI_05,
+        DI_06,
+        DI_07,
+        DI_08,
+        DI_09,
+        DI_10,
+        DI_11,
+        DI_12,
+        DI_13,
+        DI_14,
     };
     Q_ENUM(ID)
 
     ID id;
     bool data {};
-    Acces acces = ReadWrite;
+    const Acces acces = ReadOnly;
     QString error {};
 
     //    QVariant toVariant() const;
@@ -70,4 +72,4 @@ public:
 };
 }
 
-Q_DECLARE_METATYPE(Coils::Data)
+Q_DECLARE_METATYPE(DiscreteInputs::Data)
