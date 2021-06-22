@@ -23,7 +23,8 @@ static constexpr uint8_t tableCrcHi[] = {
     0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41, 0x01, 0xC0, 0x80, 0x41,
     0x00, 0xC1, 0x81, 0x40, 0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41,
     0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41, 0x01, 0xC0, 0x80, 0x41,
-    0x00, 0xC1, 0x81, 0x40};
+    0x00, 0xC1, 0x81, 0x40
+};
 
 /* Table of CRC values for low-order byte */
 static constexpr uint8_t tableCrcLo[] = {
@@ -48,11 +49,22 @@ static constexpr uint8_t tableCrcLo[] = {
     0x5A, 0x9A, 0x9B, 0x5B, 0x99, 0x59, 0x58, 0x98, 0x88, 0x48, 0x49, 0x89,
     0x4B, 0x8B, 0x8A, 0x4A, 0x4E, 0x8E, 0x8F, 0x4F, 0x8D, 0x4D, 0x4C, 0x8C,
     0x44, 0x84, 0x85, 0x45, 0x87, 0x47, 0x46, 0x86, 0x82, 0x42, 0x43, 0x83,
-    0x41, 0x81, 0x80, 0x40};
+    0x41, 0x81, 0x80, 0x40
+};
+
+void MyModbus::prepare()
+{
+    request.clear();
+    response.clear();
+    m_errorString.clear();
+    readAll();
+    QApplication::processEvents();
+}
 
 MyModbus::MyModbus(QObject* parent)
-    : QSerialPort(parent) {
-    setPortName(1 ? "COM12" : "COM28");
+    : QSerialPort(parent)
+{
+    setPortName(0 ? "COM12" : "COM28");
     setBaudRate(Baud115200);
     setParity(NoParity);
     setDataBits(Data8);
@@ -63,10 +75,11 @@ MyModbus::MyModbus(QObject* parent)
 
 MyModbus::Error MyModbus::error() const { return m_error; }
 
-uint16_t MyModbus::crc16(std::span<std::byte> data) {
+uint16_t MyModbus::crc16(std::span<std::byte> data)
+{
     uint8_t crc_hi = 0xFF; /* high CRC byte initialized */
     uint8_t crc_lo = 0xFF; /* low CRC byte initialized */
-    for(auto&& byte : data) {
+    for (auto&& byte : data) {
         auto i = crc_hi ^ static_cast<uint8_t>(byte); /* calculate the CRC  */ /* will index into CRC lookup */
         crc_hi = crc_lo ^ tableCrcHi[i];
         crc_lo = tableCrcLo[i];
@@ -78,23 +91,27 @@ uint8_t MyModbus::address() const { return m_address; }
 
 void MyModbus::setAddress(uint8_t newAddress) { m_address = newAddress; }
 
-qint64 MyModbus::writeRequest() {
+qint64 MyModbus::writeRequest()
+{
     logRequest();
     return write(reinterpret_cast<const char*>(request.data()), request.size());
 }
 
-void MyModbus::logRequest() {
+void MyModbus::logRequest()
+{
     qDebug() << "request" << QByteArray(reinterpret_cast<const char*>(request.data()), request.size()).toHex('|').toUpper();
 }
 
-void MyModbus::logResponse() {
+void MyModbus::logResponse()
+{
     qDebug() << "response" << QByteArray(reinterpret_cast<const char*>(response.data()), response.size()).toHex('|').toUpper();
 }
 
-bool MyModbus::readAndCheck() {
+bool MyModbus::readAndCheck()
+{
     response.resize(5);
     read(reinterpret_cast<char*>(response.data()), 5);
-    if(bool(response[1] & std::byte {0x80})) {
+    if (bool(response[1] & std::byte { 0x80 })) {
         m_errorString = EnumHelper::toString(m_error = static_cast<Error>(response.data()[2]));
         qDebug() << "err response" << QByteArray(reinterpret_cast<const char*>(response.data()), 5).toHex('|').toUpper();
         return {};
@@ -102,21 +119,24 @@ bool MyModbus::readAndCheck() {
     return true;
 }
 
-qint64 MyModbus::readResponse(int count) {
-    auto from {response.size()};
+qint64 MyModbus::readResponse(int count)
+{
+    auto from { response.size() };
     response.resize(response.size() + count);
     return read(reinterpret_cast<char*>(response.data() + from), count);
 }
 
-void add08(std::vector<std::byte> &arr, uint8_t data) {
-    arr.emplace_back(std::byte {data});
+void MyModbus::add08(ByteVector& arr, uint8_t data)
+{
+    arr.emplace_back(std::byte { data });
 }
 
-void add16(std::vector<std::byte> &arr, uint16_t data) {
+void MyModbus::add16(ByteVector& arr, uint16_t data)
+{
     union {
         uint16_t d;
         std::byte byte[2];
-    } u {.d = data};
+    } u { .d = data };
     arr.emplace_back(u.byte[1]);
     arr.emplace_back(u.byte[0]);
 }

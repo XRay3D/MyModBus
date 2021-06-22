@@ -4,7 +4,7 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 CONFIG += debug_and_release
 
-TARGET = "FlowMeter"
+TARGET = ModBusTester
 
 #CONFIG += c++17
 CONFIG(debug, debug|release) {
@@ -25,6 +25,9 @@ SOURCES += \
     holdingregisters/hldreg_data.cpp \
     holdingregisters/hldreg_delegate.cpp \
     holdingregisters/hldreg_model.cpp \
+    inputregisters/inreg_data.cpp \
+    inputregisters/inreg_delegate.cpp \
+    inputregisters/inreg_model.cpp \
     interface.cpp \
     main.cpp \
     mainwindow.cpp \
@@ -39,6 +42,9 @@ HEADERS += \
     holdingregisters/hldreg_data.h \
     holdingregisters/hldreg_delegate.h \
     holdingregisters/hldreg_model.h \
+    inputregisters/inreg_data.h \
+    inputregisters/inreg_delegate.h \
+    inputregisters/inreg_model.h \
     interface.h \
     mainwindow.h \
     modelinputdiscrete.h \

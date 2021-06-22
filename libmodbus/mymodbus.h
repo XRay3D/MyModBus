@@ -19,22 +19,18 @@ struct PDU {
 
 #pragma pack(pop)
 
+using ByteVector = std::vector<std::byte>;
+
 class MyModbus : public QSerialPort {
     Q_OBJECT
 
-    uint8_t m_address {1};
+    uint8_t m_address { 1 };
     QString m_errorString;
 
-    std::vector<std::byte> request;
-    std::vector<std::byte> response;
+    ByteVector request;
+    ByteVector response;
 
-    void prepare() {
-        request.clear();
-        response.clear();
-        m_errorString.clear();
-        readAll();
-        QApplication::processEvents();
-    }
+    void prepare();
 
 public:
     explicit MyModbus(QObject* parent = nullptr);
@@ -81,7 +77,8 @@ public:
 
     ///////////////////////////////////// HoldingRegisters
     template <class T, class... ByteOrdering>
-    bool readHoldingRegisters(uint16_t regAddress, T& regData, std::tuple<ByteOrdering...>) {
+    bool readHoldingRegisters(uint16_t regAddress, T& regData, std::tuple<ByteOrdering...>)
+    {
         using Ty = std::decay_t<T>;
         constexpr uint16_t size = sizeof(Ty) / 2;
         static_assert(!(sizeof(Ty) % 2), "bad data alinment");
@@ -101,7 +98,7 @@ public:
 
         { // read
             waitForReadyRead(100);
-            if(!readAndCheck())
+            if (!readAndCheck())
                 return false;
             readResponse(*reinterpret_cast<uint16_t*>(response.data() + 2) + 1);
             logResponse();
@@ -113,7 +110,8 @@ public:
     }
 
     template <class T, class... ByteOrdering>
-    bool writeHoldingRegisters(uint16_t regAddress, T&& regData, std::tuple<ByteOrdering...>) {
+    bool writeHoldingRegisters(uint16_t regAddress, T&& regData, std::tuple<ByteOrdering...>)
+    {
         using Ty = std::decay_t<T>;
         constexpr uint16_t size = sizeof(Ty) / 2;
         static_assert(!(sizeof(Ty) % 2), "bad data alinment");
@@ -125,7 +123,7 @@ public:
             auto tmp = regData;
             ByteOrder::reorder<Ty, ByteOrdering...>(tmp);
             add08(request, m_address);
-            if constexpr(size == 1) {
+            if constexpr (size == 1) {
                 add08(request, WriteSingleHoldingRegister);
                 add16(request, regAddress);
                 addT(request, tmp);
@@ -143,7 +141,7 @@ public:
 
         { // read
             waitForReadyRead(1000);
-            if(!readAndCheck())
+            if (!readAndCheck())
                 return false;
             readResponse(3);
             logResponse();
@@ -153,14 +151,15 @@ public:
 
     ///////////////////////////////////// Coils
     template <class T>
-    bool readCoils(uint16_t regAddress, T& coils) {
+    bool readCoils(uint16_t regAddress, T& coils)
+    {
         qDebug(__FUNCTION__);
         prepare();
         {
             add08(request, m_address);
             add08(request, ReadCoils);
             add16(request, regAddress);
-            if constexpr(/*std::size(coils) ||*/ std::is_array_v<T>) {
+            if constexpr (/*std::size(coils) ||*/ std::is_array_v<T>) {
                 add16(request, static_cast<uint16_t>(std::size(coils)));
             } else {
                 add16(request, 1);
@@ -172,17 +171,17 @@ public:
 
         { // read
             waitForReadyRead(1000);
-            if(!readAndCheck())
+            if (!readAndCheck())
                 return false;
             size_t size = *reinterpret_cast<uint8_t*>(response.data() + 2);
             readResponse(size);
-            if constexpr(/*std::size(coils) || */ std::is_array_v<T>) {
+            if constexpr (/*std::size(coils) || */ std::is_array_v<T>) {
                 int ctr {};
-                for(std::byte c : std::span<std::byte> {response.begin() + 3, size}) {
-                    std::byte m {0x01};
-                    for(int i = 1; i < 8; ++i, m <<= 1) {
+                for (std::byte c : std::span<std::byte> { response.begin() + 3, size }) {
+                    std::byte m { 0x01 };
+                    for (int i = 1; i < 8; ++i, m <<= 1) {
                         coils[ctr++] = static_cast<bool>(c & m);
-                        if(ctr == std::size(coils))
+                        if (ctr == std::size(coils))
                             break;
                     }
                 }
@@ -195,7 +194,8 @@ public:
     }
 
     template <class T>
-    bool writeSingleCoil(uint16_t regAddress, T&& coils) {
+    bool writeSingleCoil(uint16_t regAddress, T&& coils)
+    {
         qDebug(__FUNCTION__);
         prepare();
         { // write
@@ -210,7 +210,7 @@ public:
 
         { // read
             waitForReadyRead(1000);
-            if(!readAndCheck())
+            if (!readAndCheck())
                 return false;
             readResponse(3);
             logResponse();
@@ -230,7 +230,8 @@ public:
     array_size(T(&&)[N]) -> array_size<T, N>;
 
     template <class T>
-    bool writeMultipleCoils(uint16_t regAddress, T& coils) requires std::is_array_v<T> {
+    bool writeMultipleCoils(uint16_t regAddress, T& coils) requires std::is_array_v<T>
+    {
         qDebug(__FUNCTION__);
         prepare();
         { // write
@@ -245,11 +246,11 @@ public:
             uint8_t data[dataSize] {};
 
             int ctr {};
-            for(auto&& c : data) {
-                for(int m = 1; m < 0x100; m <<= 1) {
-                    if(coils[ctr++])
+            for (auto&& c : data) {
+                for (int m = 1; m < 0x100; m <<= 1) {
+                    if (coils[ctr++])
                         c |= m;
-                    if(ctr == coilsCount)
+                    if (ctr == coilsCount)
                         break;
                 }
             }
@@ -265,7 +266,7 @@ public:
 
         { // read
             waitForReadyRead(1000);
-            if(!readAndCheck())
+            if (!readAndCheck())
                 return false;
             readResponse(3);
             logResponse();
@@ -275,14 +276,15 @@ public:
 
     ///////////////////////////////////// DiscreteInputs
     template <class T>
-    bool readDiscreteInputs(uint16_t regAddress, T& coils) {
+    bool readDiscreteInputs(uint16_t regAddress, T& coils)
+    {
         qDebug(__FUNCTION__);
         prepare();
         {
             add08(request, m_address);
             add08(request, ReadDiscreteInputs);
             add16(request, regAddress);
-            if constexpr(/*std::size(coils) ||*/ std::is_array_v<T>) {
+            if constexpr (/*std::size(coils) ||*/ std::is_array_v<T>) {
                 add16(request, static_cast<uint16_t>(std::size(coils)));
             } else {
                 add16(request, 1);
@@ -294,17 +296,17 @@ public:
 
         { // read
             waitForReadyRead(1000);
-            if(!readAndCheck())
+            if (!readAndCheck())
                 return false;
             size_t size = *reinterpret_cast<uint8_t*>(response.data() + 2);
             readResponse(size);
-            if constexpr(/*std::size(coils) || */ std::is_array_v<T>) {
+            if constexpr (/*std::size(coils) || */ std::is_array_v<T>) {
                 int ctr {};
-                for(std::byte c : std::span<std::byte> {response.begin() + 3, size}) {
-                    std::byte m {0x01};
-                    for(int i = 1; i < 8; ++i, m <<= 1) {
+                for (std::byte c : std::span<std::byte> { response.begin() + 3, size }) {
+                    std::byte m { 0x01 };
+                    for (int i = 1; i < 8; ++i, m <<= 1) {
                         coils[ctr++] = static_cast<bool>(c & m);
-                        if(ctr == std::size(coils))
+                        if (ctr == std::size(coils))
                             break;
                     }
                 }
@@ -318,7 +320,8 @@ public:
 
     ///////////////////////////////////// ReadInputRegisters
     template <class T, class... ByteOrdering>
-    bool readInputRegisters(uint16_t regAddress, T& regData, std::tuple<ByteOrdering...>) {
+    bool readInputRegisters(uint16_t regAddress, T& regData, std::tuple<ByteOrdering...>)
+    {
         using Ty = std::decay_t<T>;
         constexpr uint16_t size = sizeof(Ty) / 2;
         static_assert(!(sizeof(Ty) % 2), "bad data alinment");
@@ -338,7 +341,7 @@ public:
 
         { // read
             waitForReadyRead(100);
-            if(!readAndCheck())
+            if (!readAndCheck())
                 return false;
             readResponse(*reinterpret_cast<uint16_t*>(response.data() + 2) + 1);
             logResponse();
@@ -358,10 +361,11 @@ public:
     uint16_t crc16(std::span<std::byte> data);
 
 private:
-    void add08(std::vector<std::byte>& arr, uint8_t data);
-    void add16(std::vector<std::byte>& arr, uint16_t data);
+    void add08(ByteVector& arr, uint8_t data);
+    void add16(ByteVector& arr, uint16_t data);
     template <class T>
-    void addT(std::vector<std::byte>& arr, T& data) {
+    void addT(ByteVector& arr, T& data)
+    {
         auto begin = reinterpret_cast<const std::byte*>(std::addressof(data));
         auto end = reinterpret_cast<const std::byte*>(std::addressof(data)) + sizeof(T);
         arr.insert(arr.end(), begin, end);
