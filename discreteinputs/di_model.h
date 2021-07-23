@@ -63,7 +63,7 @@ public:
     Q_ENUM(Columns);
 
     // QAbstractItemModel interface
-    int rowCount(const QModelIndex& = {}) const override { return m_data.size(); }
+    int rowCount(const QModelIndex& = {}) const override { return static_cast<int>(m_data.size()); }
     int columnCount(const QModelIndex& = {}) const override { return ColumnCount; }
     QVariant data(const QModelIndex& index, int role) const override;
     bool setData(const QModelIndex& index, const QVariant& value, int role) override;

@@ -3,9 +3,9 @@
 #include "inreg_data.h"
 
 #include <QAbstractTableModel>
-template <size_t I>
-struct key {
-};
+//template <size_t I>
+//struct key {
+//};
 
 namespace InputRegisters {
 

@@ -12,6 +12,9 @@ class Model;
 namespace DiscreteInputs {
 class Model;
 }
+namespace InputRegisters {
+class Model;
+}
 namespace Ui {
 class MainWindow;
 }
@@ -26,7 +29,6 @@ public:
     HoldingRegisters::Model* model() const;
 
 private slots:
-    void regDataGen();
     void on_pbReadSelected_clicked();
 
 private:
@@ -37,11 +39,18 @@ private:
     void initCbxPorts();
     void initTableView();
 
-    void readHr(QModelIndex&& index);
-    void readCl(QModelIndex&& index);
-    void readDi(QModelIndex&& index);
+    void initTvHoldingRegisters();
+    void initTvCoils();
+    void initTvDiscreteInputs();
+    void initTvInputRegisters();
+
+    void readHoldingRegisters(QModelIndex &&index);
+    void readCoils(QModelIndex &&index);
+    void readDiscreteInputs(QModelIndex &&index);
+    void readInputRegisters(QModelIndex &&index);
 
     HoldingRegisters::Model* m_hrModel;
     Coils::Model* m_clModel;
-    DiscreteInputs::Model* m_diModel;
+    DiscreteInputs::Model *m_diModel;
+    InputRegisters::Model *m_irModel;
 };

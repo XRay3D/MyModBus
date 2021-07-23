@@ -64,7 +64,7 @@ void MyModbus::prepare()
 MyModbus::MyModbus(QObject* parent)
     : QSerialPort(parent)
 {
-    setPortName(0 ? "COM12" : "COM28");
+    setPortName(1 ? "COM3" : "COM28");
     setBaudRate(Baud115200);
     setParity(NoParity);
     setDataBits(Data8);
