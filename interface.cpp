@@ -7,11 +7,11 @@ I::I()
         //        m_modbus->moveToThread(&thread);
         //        thread.connect(&thread, &QThread::finished, m_modbus, &QObject::deleteLater);
 
-        m_mymodbus = new MyModbus();
+        m_mymodbus = new Modbus();
         ///m_mymodbus->moveToThread(&thread);
         ///thread.connect(&thread, &QThread::finished, m_mymodbus, &QObject::deleteLater);
 
-        thread.start(QThread::NormalPriority);
+        //        thread.start(QThread::NormalPriority);
     }
     semaphore.release();
 }
@@ -20,10 +20,11 @@ I::~I()
 {
     semaphore.acquire();
     if (!semaphore.available()) {
-        thread.quit();
-        thread.wait();
+        /*        thread.quit();
+        thread.wait()*/
+        ;
     }
 }
 
 //LibModbus* I::modbus() { return m_modbus; }
-MyModbus* I::mymodbus() { return m_mymodbus; }
+Modbus* I::mymodbus() { return m_mymodbus; }

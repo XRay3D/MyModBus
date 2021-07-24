@@ -30,7 +30,7 @@ SOFTWARE.
 namespace EnumHelper {
 // Tool to convert enum values to/from QString
 template <typename E>
-E fromString(const QString &text)
+E fromString(const QString& text)
 {
     bool ok;
     auto result = static_cast<E>(QMetaEnum::fromType<E>().keyToValue(text.toUtf8(), &ok));
@@ -46,5 +46,11 @@ QString toString(E value)
 {
     const int intValue = static_cast<int>(value);
     return QString::fromUtf8(QMetaEnum::fromType<E>().valueToKey(intValue));
+}
+template <typename E>
+constexpr auto toChars(E value)
+{
+    const int intValue = static_cast<int>(value);
+    return QMetaEnum::fromType<E>().valueToKey(intValue);
 }
 }

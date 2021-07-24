@@ -44,13 +44,13 @@ private:
     void initTvDiscreteInputs();
     void initTvInputRegisters();
 
-    void readHoldingRegisters(QModelIndex &&index);
-    void readCoils(QModelIndex &&index);
-    void readDiscreteInputs(QModelIndex &&index);
-    void readInputRegisters(QModelIndex &&index);
+    void readHoldingRegisters(QModelIndex&& index);
+    void readCoils(QModelIndex&& index);
+    void readDiscreteInputs(QModelIndex&& index);
+    void readInputRegisters(QModelIndex&& index);
 
     HoldingRegisters::Model* m_hrModel;
     Coils::Model* m_clModel;
-    DiscreteInputs::Model *m_diModel;
-    InputRegisters::Model *m_irModel;
+    DiscreteInputs::Model* m_diModel;
+    InputRegisters::Model* m_irModel;
 };

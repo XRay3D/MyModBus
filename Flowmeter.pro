@@ -49,6 +49,7 @@ HEADERS += \
     mainwindow.h \
     modelinputdiscrete.h \
     modelinputregisters.h \
+    timer.h
 
 FORMS += \
     mainwindow.ui

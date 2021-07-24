@@ -9,12 +9,12 @@ class I {
 //    inline static LibModbus* m_modbus = nullptr;
     inline static QSemaphore semaphore;
     inline static QThread thread;
-    inline static MyModbus* m_mymodbus = nullptr;
+    inline static Modbus* m_mymodbus = nullptr;
 
 public:
     I();
     ~I();
 
 //    static LibModbus* modbus();
-    static MyModbus* mymodbus();
+    static Modbus* mymodbus();
 };

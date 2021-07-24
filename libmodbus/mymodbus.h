@@ -2,53 +2,80 @@
 
 #include "EnumHelper.h"
 #include "modbusutility.h"
+#include "timer.h"
 #include <QApplication>
-#include <QDebug>
+#include <QMutex>
+#include <QMutexLocker>
+#include <QSemaphore>
 #include <QSerialPort>
+#include <QThread>
+#include <QTimer>
 
-#pragma pack(push, 1)
-
-struct PDU {
-    uint8_t address;
-    struct ADU {
-        uint8_t functionCode;
-        uint8_t data[1];
-    } adu;
-    uint16_t crc() { return {}; };
+class Object : public QObject {
+    Q_OBJECT
+    friend class Modbus;
+    Object(QObject* parent = nullptr)
+        : QObject { parent }
+    {
+    }
+signals:
+    void open();
+    void close();
+    void write(const ByteVector& data);
 };
 
-#pragma pack(pop)
+inline auto toHex(const ByteVector& data)
+{
+    return QByteArray(reinterpret_cast<const char*>(data.data()), data.size()).toHex('|').toUpper();
+}
 
-using ByteVector = std::vector<std::byte>;
+class Modbus : public Object {
+    friend class SerialPort;
 
-class MyModbus : public QSerialPort {
     Q_OBJECT
 
-    uint8_t m_address { 1 };
-    QString m_errorString;
-
-    ByteVector request;
-    ByteVector response;
-
-    void prepare();
+    template <typename T, size_t N>
+    struct array_size {
+        constexpr array_size(T (&)[N]) { }
+        constexpr array_size(T(&&)[N]) { }
+        constexpr operator size_t() { return N; }
+    };
+    template <typename T, size_t N>
+    array_size(T (&)[N]) -> array_size<T, N>;
+    template <typename T, size_t N>
+    array_size(T(&&)[N]) -> array_size<T, N>;
 
 public:
-    explicit MyModbus(QObject* parent = nullptr);
-
+    explicit Modbus(QObject* parent = nullptr);
+    ~Modbus();
     enum Error {
-        //  Text  Code // Details
+        // Text  Code // Details
         NoError = 0,
-        IllegalFunction = 1, //Function code received in the query is not recognized or allowed by slave
-        IllegalDataAddress = 2, //Data address of some or all the required entities are not allowed or do not exist in slave
-        IllegalDataValue = 3, //Value is not accepted by slave
-        SlaveDeviceFailure = 4, //Unrecoverable error occurred while slave was attempting to perform requested action
-        Acknowledge = 5, //Slave has accepted request and is processing it, but a long duration of time is required. This response is returned to prevent a timeout error from occurring in the master. Master can next issue a Poll Program Complete message to determine whether processing is completed
-        SlaveDeviceBusy = 6, //Slave is engaged in processing a long-duration command. Master should retry later
-        NegativeAcknowledge = 7, //Slave cannot perform the programming functions. Master should request diagnostic or error information from slave
-        MemoryParityError = 8, //Slave detected a parity error in memory. Master can retry the request, but service may be required on the slave device
-        GatewayPathUnavailable = 10, //Specialized for Modbus gateways. Indicates a misconfigured gateway
-        GatewayTargetDeviceFailedToRespond = 11, //Specialized for Modbus gateways. Sent when slave fails to respond
-    } m_error {};
+        // Function code received in the query is not recognized or allowed by slave
+        IllegalFunction = 1,
+        // Data address of some or all the required entities are not allowed or do not exist in slave
+        IllegalDataAddress = 2,
+        // Value is not accepted by slave
+        IllegalDataValue = 3,
+        // Unrecoverable error occurred while slave was attempting to perform requested action
+        SlaveDeviceFailure = 4,
+        // Slave has accepted request and is processing it, but a long duration of time is required.
+        // This response is returned to prevent a timeout error from occurring in the master.
+        // Master can next issue a Poll Program Complete message to determine whether processing is completed
+        Acknowledge = 5,
+        // Slave is engaged in processing a long-duration command. Master should retry later
+        SlaveDeviceBusy = 6,
+        // Slave cannot perform the programming functions. Master should request diagnostic or error information from slave
+        NegativeAcknowledge = 7,
+        // Slave detected a parity error in memory. Master can retry the request, but service may be required on the slave device
+        MemoryParityError = 8,
+        // Specialized for Modbus gateways. Indicates a misconfigured gateway
+        GatewayPathUnavailable = 10,
+        // Specialized for Modbus gateways. Sent when slave fails to respond
+        GatewayTargetDeviceFailedToRespond = 11,
+
+        CrcError = 64
+    };
     Q_ENUM(Error)
 
     enum FunctionName {
@@ -57,9 +84,9 @@ public:
         WriteSingleCoil = 5,
         WriteMultipleCoils = 15,
         ReadInputRegisters = 4,
-        ReadMultipleHoldingRegisters = 3, //
-        WriteSingleHoldingRegister = 6, //
-        WriteMultipleHoldingRegisters = 16, //
+        ReadMultipleHoldingRegisters = 3,
+        WriteSingleHoldingRegister = 6,
+        WriteMultipleHoldingRegisters = 16,
         ReadOrWriteMultipleRegisters = 23,
         MaskWriteRegister = 22,
         ReadFIFOQueue = 24,
@@ -75,106 +102,135 @@ public:
     };
     Q_ENUM(FunctionName)
 
-    ///////////////////////////////////// HoldingRegisters
+    //    template <FunctionName Name, class T, class... ByteOrdering>
+    //    bool read(uint16_t regAddress, T&& regData, ByteOrder::Pack<ByteOrdering...> ordering)
+    //    {
+    //        /**/ if constexpr (Name == ReadInputRegisters)
+    //            return readHoldingRegisters(regAddress, std::forward<T>(regData), ordering);
+    //        else if constexpr (Name == ReadMultipleHoldingRegisters)
+    //            return readHoldingRegisters(regAddress, std::forward<T>(regData), ordering);
+    //        else
+    //            static_assert(false, "Invalid FunctionName");
+    //    }
+
+    // HoldingRegisters
     template <class T, class... ByteOrdering>
-    bool readHoldingRegisters(uint16_t regAddress, T& regData, std::tuple<ByteOrdering...>)
+    bool readHoldingRegisters(uint16_t regAddress, T& regData, ByteOrder::Pack<ByteOrdering...> ordering)
     {
         using Ty = std::decay_t<T>;
         constexpr uint16_t size = sizeof(Ty) / 2;
         static_assert(!(sizeof(Ty) % 2), "bad data alinment");
         static_assert(size <= 125, "bad data size");
 
-        qDebug(__FUNCTION__);
+        QApplication::processEvents();
+        QMutexLocker locker(&mutex);
+        Timer t(__FUNCTION__);
+        bool ok {};
+
         prepare();
+
         { // write
-            add08(request, m_address);
-            add08(request, ReadMultipleHoldingRegisters);
-            add16(request, regAddress);
-            add16(request, size);
+            setStartOfRequest(m_address, ReadMultipleHoldingRegisters, regAddress);
+            addToRequest16(size);
             auto crc = crc16(request);
-            add16(request, crc);
+            addToRequest16(crc);
             writeRequest();
         }
-
-        { // read
-            waitForReadyRead(100);
+        do { // read
             if (!readAndCheck())
-                return false;
-            readResponse(*reinterpret_cast<uint16_t*>(response.data() + 2) + 1);
+                break;
+            readResponse(response.packSize());
             logResponse();
+            if (!checkCrc())
+                break;
+
             Ty& tmp = *reinterpret_cast<T*>(response.data() + 3);
-            ByteOrder::reorder<Ty, ByteOrdering...>(tmp);
+            ByteOrder::reorder<Ty, ByteOrdering...>(tmp, ordering);
             regData = tmp;
-        }
-        return true;
+            ok = true;
+        } while (0);
+
+        return ok;
     }
 
     template <class T, class... ByteOrdering>
-    bool writeHoldingRegisters(uint16_t regAddress, T&& regData, std::tuple<ByteOrdering...>)
+    bool writeHoldingRegisters(uint16_t regAddress, T&& regData, ByteOrder::Pack<ByteOrdering...> ordering)
     {
         using Ty = std::decay_t<T>;
         constexpr uint16_t size = sizeof(Ty) / 2;
         static_assert(!(sizeof(Ty) % 2), "bad data alinment");
         static_assert(size <= 123, "bad data size");
 
-        qDebug(__FUNCTION__);
+        QApplication::processEvents();
+        QMutexLocker locker(&mutex);
+        Timer t(__FUNCTION__);
+        bool ok {};
+
         prepare();
+
         { // write
             auto tmp = regData;
-            ByteOrder::reorder<Ty, ByteOrdering...>(tmp);
-            add08(request, m_address);
+            ByteOrder::reorder(tmp, ordering);
             if constexpr (size == 1) {
-                add08(request, WriteSingleHoldingRegister);
-                add16(request, regAddress);
-                addT(request, tmp);
+                setStartOfRequest(m_address, WriteSingleHoldingRegister, regAddress);
+                addToRequestT(tmp);
             } else {
-                add08(request, WriteMultipleHoldingRegisters);
-                add16(request, regAddress);
-                add16(request, size);
-                add08(request, size * 2);
-                addT(request, tmp);
+                setStartOfRequest(m_address, WriteMultipleHoldingRegisters, regAddress);
+                addToRequest16(size);
+                addToRequest08(size * 2);
+                addToRequestT(tmp);
             }
             auto crc = crc16(request);
-            add16(request, crc);
+            addToRequest16(crc);
             writeRequest();
         }
 
-        { // read
-            waitForReadyRead(1000);
+        do { // read
+
             if (!readAndCheck())
-                return false;
+                break;
             readResponse(3);
             logResponse();
-        }
-        return true;
+            if (!checkCrc())
+                break;
+
+            ok = true;
+        } while (0);
+
+        return ok;
     }
 
-    ///////////////////////////////////// Coils
+    // Coils
     template <class T>
     bool readCoils(uint16_t regAddress, T& coils)
     {
-        qDebug(__FUNCTION__);
+        QApplication::processEvents();
+        QMutexLocker locker(&mutex);
+        Timer t(__FUNCTION__);
+        bool ok {};
+
         prepare();
-        {
-            add08(request, m_address);
-            add08(request, ReadCoils);
-            add16(request, regAddress);
+
+        { // write
+            setStartOfRequest(m_address, ReadCoils, regAddress);
             if constexpr (/*std::size(coils) ||*/ std::is_array_v<T>) {
-                add16(request, static_cast<uint16_t>(std::size(coils)));
+                addToRequest16(static_cast<uint16_t>(std::size(coils)));
             } else {
-                add16(request, 1);
+                addToRequest16(1);
             }
             auto crc = crc16(request);
-            add16(request, crc);
+            addToRequest16(crc);
             writeRequest();
         }
 
-        { // read
-            waitForReadyRead(1000);
+        do { // read
             if (!readAndCheck())
-                return false;
+                break;
             size_t size = *reinterpret_cast<uint8_t*>(response.data() + 2);
             readResponse(size);
+            logResponse();
+            if (!checkCrc())
+                break;
             if constexpr (/*std::size(coils) || */ std::is_array_v<T>) {
                 int ctr {};
                 for (std::byte c : std::span<std::byte> { response.begin() + 3, size }) {
@@ -188,60 +244,62 @@ public:
             } else {
                 coils = static_cast<bool>(response[3]);
             }
-            logResponse();
-        }
-        return true;
+
+            ok = true;
+        } while (0);
+
+        return ok;
     }
 
     template <class T>
     bool writeSingleCoil(uint16_t regAddress, T&& coils)
     {
-        qDebug(__FUNCTION__);
+        QApplication::processEvents();
+        QMutexLocker locker(&mutex);
+
+        Timer t(__FUNCTION__);
+        bool ok {};
+
         prepare();
         { // write
-            add08(request, m_address);
-            add08(request, WriteSingleCoil);
-            add16(request, regAddress);
-            add16(request, static_cast<bool>(coils) ? 0xFF00 : 0x0000);
+            setStartOfRequest(m_address, WriteSingleCoil, regAddress);
+            addToRequest16(static_cast<bool>(coils) ? 0xFF00 : 0x0000);
             auto crc = crc16(request);
-            add16(request, crc);
+            addToRequest16(crc);
             writeRequest();
         }
 
-        { // read
-            waitForReadyRead(1000);
+        do { // read
+
             if (!readAndCheck())
-                return false;
+                break;
             readResponse(3);
             logResponse();
-        }
-        return true;
-    }
+            if (!checkCrc())
+                break;
 
-    template <typename T, size_t N>
-    struct array_size {
-        constexpr array_size(T (&)[N]) { }
-        constexpr array_size(T(&&)[N]) { }
-        constexpr operator size_t() { return N; }
-    };
-    template <typename T, size_t N>
-    array_size(T (&)[N]) -> array_size<T, N>;
-    template <typename T, size_t N>
-    array_size(T(&&)[N]) -> array_size<T, N>;
+            ok = true;
+        } while (0);
+
+        return ok;
+    }
 
     template <class T>
     bool writeMultipleCoils(uint16_t regAddress, T& coils) requires std::is_array_v<T>
     {
-        qDebug(__FUNCTION__);
+        constexpr size_t coilsCount = array_size(T {});
+        constexpr uint8_t dataSize = coilsCount / 8 + (coilsCount % 8 ? 1 : 0);
+
+        QApplication::processEvents();
+        QMutexLocker locker(&mutex);
+        Timer t(__FUNCTION__);
+        bool ok {};
+
         prepare();
         { // write
-            constexpr size_t coilsCount = array_size(T {});
-            constexpr uint8_t dataSize = coilsCount / 8 + (coilsCount % 8 ? 1 : 0);
 
-            add08(request, m_address);
-            add08(request, WriteMultipleCoils);
-            add16(request, regAddress);
-            add16(request, static_cast<uint16_t>(coilsCount));
+            setStartOfRequest(m_address, WriteMultipleCoils, regAddress);
+            addToRequest16(static_cast<uint16_t>(coilsCount));
 
             uint8_t data[dataSize] {};
 
@@ -255,51 +313,62 @@ public:
                 }
             }
 
-            add08(request, dataSize);
+            addToRequest08(dataSize);
 
-            addT(request, data);
+            addToRequestT(data);
 
             auto crc = crc16(request);
-            add16(request, crc);
+            addToRequest16(crc);
             writeRequest();
         }
 
-        { // read
-            waitForReadyRead(1000);
+        do { // read
+
             if (!readAndCheck())
-                return false;
+                break;
             readResponse(3);
             logResponse();
-        }
-        return true;
+            if (!checkCrc())
+                break;
+
+            ok = true;
+        } while (0);
+
+        return ok;
     }
 
-    ///////////////////////////////////// DiscreteInputs
+    // DiscreteInputs
     template <class T>
     bool readDiscreteInputs(uint16_t regAddress, T& coils)
     {
-        qDebug(__FUNCTION__);
+        QApplication::processEvents();
+        QMutexLocker locker(&mutex);
+
+        Timer t(__FUNCTION__);
+        bool ok {};
+
         prepare();
-        {
-            add08(request, m_address);
-            add08(request, ReadDiscreteInputs);
-            add16(request, regAddress);
-            if constexpr (/*std::size(coils) ||*/ std::is_array_v<T>) {
-                add16(request, static_cast<uint16_t>(std::size(coils)));
+        { // write
+            setStartOfRequest(m_address, ReadDiscreteInputs, regAddress);
+            if constexpr (std::is_array_v<T>) {
+                addToRequest16(static_cast<uint16_t>(std::size(coils)));
             } else {
-                add16(request, 1);
+                addToRequest16(1);
             }
             auto crc = crc16(request);
-            add16(request, crc);
+            addToRequest16(crc);
             writeRequest();
         }
 
-        { // read
-            waitForReadyRead(1000);
+        do { // read
+
             if (!readAndCheck())
-                return false;
+                break;
             size_t size = *reinterpret_cast<uint8_t*>(response.data() + 2);
             readResponse(size);
+            logResponse();
+            if (!checkCrc())
+                break;
             if constexpr (/*std::size(coils) || */ std::is_array_v<T>) {
                 int ctr {};
                 for (std::byte c : std::span<std::byte> { response.begin() + 3, size }) {
@@ -313,46 +382,54 @@ public:
             } else {
                 coils = static_cast<bool>(response[3]);
             }
-            logResponse();
-        }
-        return true;
+
+            ok = true;
+        } while (0);
+
+        return ok;
     }
 
-    ///////////////////////////////////// ReadInputRegisters
+    // ReadInputRegisters
     template <class T, class... ByteOrdering>
-    bool readInputRegisters(uint16_t regAddress, T& regData, std::tuple<ByteOrdering...>)
+    bool readInputRegisters(uint16_t regAddress, T& regData, ByteOrder::Pack<ByteOrdering...> ordering)
     {
         using Ty = std::decay_t<T>;
         constexpr uint16_t size = sizeof(Ty) / 2;
         static_assert(!(sizeof(Ty) % 2), "bad data alinment");
         static_assert(size <= 125, "bad data size");
 
-        qDebug(__FUNCTION__);
+        QApplication::processEvents();
+        QMutexLocker locker(&mutex);
+        Timer t(__FUNCTION__);
+        bool ok {};
+
         prepare();
         { // write
-            add08(request, m_address);
-            add08(request, ReadInputRegisters);
-            add16(request, regAddress);
-            add16(request, size);
+            setStartOfRequest(m_address, ReadInputRegisters, regAddress);
+            addToRequest16(size);
             auto crc = crc16(request);
-            add16(request, crc);
+            addToRequest16(crc);
             writeRequest();
         }
 
-        { // read
-            waitForReadyRead(100);
+        do { // read
             if (!readAndCheck())
-                return false;
-            readResponse(*reinterpret_cast<uint16_t*>(response.data() + 2) + 1);
+                break;
+            readResponse(response.packSize());
             logResponse();
+            if (!checkCrc())
+                break;
             Ty& tmp = *reinterpret_cast<T*>(response.data() + 3);
-            ByteOrder::reorder<Ty, ByteOrdering...>(tmp);
+            ByteOrder::reorder(tmp, ordering);
             regData = tmp;
-        }
-        return true;
+            ok = true;
+        } while (0);
+
+        return ok;
     }
 
-    uint8_t address() const;
+    uint8_t
+    address() const;
     void setAddress(uint8_t newAddress);
 
     Error error() const;
@@ -361,22 +438,45 @@ public:
     uint16_t crc16(std::span<std::byte> data);
 
 private:
-    void add08(ByteVector& arr, uint8_t data);
-    void add16(ByteVector& arr, uint16_t data);
+    QMutex mutex;
+
+    QSemaphore semaphore;
+
+    QThread portThread;
+    QSerialPort* m_port;
+
+    int m_timeout { 1000 };
+
+    uint8_t m_address { 1 };
+    QString m_errorString;
+
+    ByteVector request;
+    ByteVector response;
+
+    void prepare();
+
+    void addToRequest08(uint8_t data);
+    void addToRequest16(uint16_t data);
     template <class T>
-    void addT(ByteVector& arr, T& data)
+    void addToRequestT(T& data)
     {
         auto begin = reinterpret_cast<const std::byte*>(std::addressof(data));
         auto end = reinterpret_cast<const std::byte*>(std::addressof(data)) + sizeof(T);
-        arr.insert(arr.end(), begin, end);
+        request.insert(request.end(), begin, end);
     }
 
     bool readAndCheck();
-    qint64 readResponse(int count);
+    bool checkCrc();
+    int readResponse(size_t count);
 
     void logResponse();
     void logRequest();
-    qint64 writeRequest();
-
-signals:
+    int writeRequest();
+    Error m_error { NoError };
+    void setStartOfRequest(uint8_t address, FunctionName function, uint16_t regAddress)
+    {
+        addToRequest08(address);
+        addToRequest08(function);
+        addToRequest16(regAddress);
+    }
 };
