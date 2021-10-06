@@ -102,8 +102,8 @@ public:
     };
     Q_ENUM(FunctionName)
 
-    //    template <FunctionName Name, class T, class... ByteOrdering>
-    //    bool read(uint16_t regAddress, T&& regData, ByteOrder::Pack<ByteOrdering...> ordering)
+    //    template <FunctionName Name, class T, class ByteOrdering = ByteOrder::NoReorder>
+    //    bool read(uint16_t regAddress, T&& regData, ByteOrdering={})
     //    {
     //        /**/ if constexpr (Name == ReadInputRegisters)
     //            return readHoldingRegisters(regAddress, std::forward<T>(regData), ordering);
@@ -114,8 +114,8 @@ public:
     //    }
 
     // HoldingRegisters
-    template <class T, class... ByteOrdering>
-    bool readHoldingRegisters(uint16_t regAddress, T& regData, ByteOrder::Pack<ByteOrdering...> ordering)
+    template <class T, class ByteOrdering = ByteOrder::NoReorder>
+    bool readHoldingRegisters(uint16_t regAddress, T& regData, ByteOrdering ordering = {})
     {
         using Ty = std::decay_t<T>;
         constexpr uint16_t size = sizeof(Ty) / 2;
@@ -145,7 +145,7 @@ public:
                 break;
 
             Ty& tmp = *reinterpret_cast<T*>(response.data() + 3);
-            ByteOrder::reorder<Ty, ByteOrdering...>(tmp, ordering);
+            ByteOrder::reorder(tmp, ordering);
             regData = tmp;
             ok = true;
         } while (0);
@@ -153,8 +153,8 @@ public:
         return ok;
     }
 
-    template <class T, class... ByteOrdering>
-    bool writeHoldingRegisters(uint16_t regAddress, T&& regData, ByteOrder::Pack<ByteOrdering...> ordering)
+    template <class T, class ByteOrdering = ByteOrder::NoReorder>
+    bool writeHoldingRegisters(uint16_t regAddress, T&& regData, ByteOrdering ordering = {})
     {
         using Ty = std::decay_t<T>;
         constexpr uint16_t size = sizeof(Ty) / 2;
@@ -390,8 +390,8 @@ public:
     }
 
     // ReadInputRegisters
-    template <class T, class... ByteOrdering>
-    bool readInputRegisters(uint16_t regAddress, T& regData, ByteOrder::Pack<ByteOrdering...> ordering)
+    template <class T, class ByteOrdering = ByteOrder::NoReorder>
+    bool readInputRegisters(uint16_t regAddress, T& regData, ByteOrdering ordering = {})
     {
         using Ty = std::decay_t<T>;
         constexpr uint16_t size = sizeof(Ty) / 2;

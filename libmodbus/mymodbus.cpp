@@ -53,7 +53,7 @@ public:
     SerialPort(Modbus* modBus)
         : modBus { modBus }
     {
-        setPortName(1 ? "COM3" : "COM28");
+        setPortName(1 ? "COM10" : "COM28");
         setBaudRate(Baud115200);
         setParity(NoParity);
         setDataBits(Data8);
@@ -61,7 +61,7 @@ public:
         setFlowControl(NoFlowControl);
         connect(this, &QIODevice::readyRead, this, &SerialPort::readyReadSlot);
         qDebug() << "open" << open(QIODevice::ReadWrite);
-        startTimer(10);
+        //        startTimer(10);
     }
     virtual ~SerialPort() { }
 
@@ -75,7 +75,7 @@ public:
         modBus->response.resize(modBus->response.size() + available);
         read(reinterpret_cast<char*>(modBus->response.data() + lastSize), available);
         modBus->semaphore.release(available);
-        qDebug() << "readyRead" << lastSize << available << toHex(modBus->request);
+        qDebug() << "readyRead" << lastSize << available << toHex(modBus->response);
     }
 
     void openSlot() { open(QIODevice::ReadWrite); }
@@ -129,15 +129,19 @@ Modbus::Error Modbus::error() const
 
 uint16_t Modbus::crc16(std::span<std::byte> data)
 {
-    uint8_t crc_hi = 0xFF; /* high CRC byte initialized */
-    uint8_t crc_lo = 0xFF; /* low CRC byte initialized */
+    union {
+        uint16_t crc = 0xFFFF;
+        struct {
+            uint8_t crc_lo; /* low CRC byte initialized */
+            uint8_t crc_hi; /* high CRC byte initialized */
+        };
+    } u;
     for (auto&& byte : data) {
-        auto i = crc_hi ^ static_cast<uint8_t>(byte);
-        /* calculate the CRC  */ /* will index into CRC lookup */
-        crc_hi = crc_lo ^ tableCrcHi[i];
-        crc_lo = tableCrcLo[i];
+        auto i = u.crc_hi ^ static_cast<uint8_t>(byte);
+        u.crc_hi = u.crc_lo ^ tableCrcHi[i];
+        u.crc_lo = tableCrcLo[i];
     }
-    return (crc_hi << 8 | crc_lo);
+    return u.crc;
 }
 
 uint8_t Modbus::address() const
@@ -158,21 +162,15 @@ int Modbus::writeRequest()
     return {}; //m_port->write(reinterpret_cast<const char*>(request.data()), request.size());
 }
 
-void Modbus::logRequest()
-{
-    qDebug() << "request" << toHex(request);
-}
+void Modbus::logRequest() { qDebug() << "request" << toHex(request); }
 
-void Modbus::logResponse()
-{
-    qDebug() << "response" << toHex(response);
-}
+void Modbus::logResponse() { qDebug() << "response" << toHex(response); }
 
 bool Modbus::readAndCheck()
 {
-    //    response.resize(5);
-    //    read(reinterpret_cast<char*>(response.data()), 5);
-    if (semaphore.tryAcquire(5, m_timeout) && response[0] == std::byte(m_address) && bool(response[1] & std::byte { 0x80 })) {
+    if (semaphore.tryAcquire(5, m_timeout)
+        && response[0] == std::byte(m_address)
+        && bool(response[1] & std::byte { 0x80 })) {
         m_errorString = EnumHelper::toString(m_error = static_cast<Error>(response.data()[2]));
         qDebug() << "err response" << toHex(response).mid(0, 10 /*5 bytes only*/);
         return {};
@@ -202,11 +200,11 @@ void Modbus::addToRequest16(uint16_t data)
 
 bool Modbus::checkCrc()
 {
-    auto crc1 = request.crc();
-    auto crc2 = crc16({ request.data(), static_cast<size_t>(request.size() - 2) });
-    ByteOrder::Swap16()(crc1);
+    uint16_t crc1 = request.crc();
+    uint16_t crc2 = crc16({ request.data(), static_cast<size_t>(request.size() - 2) });
+    crc1 = ByteOrder::Swap2B()(crc1);
     const bool ok = crc1 == crc2;
     m_error = ok ? NoError : CrcError;
-    qDebug() << m_error << crc1 << crc2;
+    //qDebug() << m_error << crc1 << crc2;
     return ok;
 }

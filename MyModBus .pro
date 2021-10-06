@@ -61,6 +61,9 @@ TRANSLATIONS += \
 DISTFILES += \
 #    AddrId.c \
 #    DataBase.c \
+    ModBusAmega32/ModBusAmega32.qbs \
+    ModBusAmega32/main.cpp \
+    ModBusAmega32/ModBusAmega32.qbs.user
 
 INCLUDEPATH += \
     magic_get/include/ \

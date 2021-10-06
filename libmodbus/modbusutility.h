@@ -10,10 +10,9 @@ namespace rng = std::ranges;
 
 namespace ByteOrder {
 
-struct Swap16 {
-    Swap16() { }
+struct Swap2B {
     template <size_t S>
-    Swap16(std::array<uint16_t, S>& values)
+    Swap2B(std::array<uint16_t, S>& values)
     {
         for (auto& v : values) {
             union {
@@ -23,6 +22,15 @@ struct Swap16 {
             std::swap(U.u8[0], U.u8[1]);
         }
     }
+    Swap2B() { }
+    Swap2B(uint16_t& val)
+    {
+        union {
+            uint8_t u8[2];
+            uint16_t u16;
+        } U { .u16 = val };
+        std::swap(U.u8[0], U.u8[1]);
+    }
     uint16_t operator()(uint16_t& val)
     {
         union {
@@ -30,29 +38,41 @@ struct Swap16 {
             uint16_t u16;
         } U { .u16 = val };
         std::swap(U.u8[0], U.u8[1]);
-        return val;
+        return U.u16;
     }
 };
 
-struct ReverseData {
-    ReverseData() { }
+struct Reverse16 {
+    Reverse16() { }
     template <size_t S>
-    ReverseData(std::array<uint16_t, S>& values) { rng::reverse(values); }
+    Reverse16(std::array<uint16_t, S>& values) { rng::reverse(values); }
+};
+
+struct Reverse8 {
+    Reverse8() { }
+    template <size_t S>
+    Reverse8(std::array<uint16_t, S>& values) { rng::reverse(reinterpret_cast<std::array<uint8_t, S * 2>&>(values)); }
+};
+
+struct NoReorder {
+    NoReorder() { }
+    template <size_t S>
+    NoReorder(std::array<uint16_t, S>&) { }
 };
 
 template <class... ByteOrdering>
 struct Pack {
 };
 
-using ABCD = Pack<>;
-using BADC = Pack<Swap16>;
-using CDAB = Pack<ReverseData>;
-using DCBA = Pack<Swap16, ReverseData>;
+using ABCD = NoReorder;
+using BADC = Swap2B;
+using CDAB = Reverse16;
+using DCBA = Reverse8;
 
-template <class T, class... ByteOrdering>
-void reorder(T& reg, Pack<ByteOrdering...>)
+template <class T, class ByteOrdering>
+void reorder(T& reg, ByteOrdering)
 {
-    if constexpr (sizeof...(ByteOrdering))
+    if constexpr (std::is_same_v<NoReorder, ByteOrdering>)
         return;
     constexpr uint16_t size = sizeof(std::decay_t<T>) / 2;
     using Array = std::array<uint16_t, size>;
@@ -61,7 +81,7 @@ void reorder(T& reg, Pack<ByteOrdering...>)
         T val;
     } u;
     u.val = reg;
-    (ByteOrdering(u.data16), ...);
+    ByteOrdering(u.data16);
     reg = u.val;
 }
 
@@ -98,9 +118,9 @@ struct ByteVector : std::vector<std::byte> {
 };
 
 #else
-
 class ByteVector {
-    std::byte m_data[512] {};
+    enum { MaxSize = 512 };
+    std::byte m_data[MaxSize] {};
     uint16_t m_size {};
 
 public:
@@ -125,8 +145,8 @@ public:
 
     void resize(uint16_t size) noexcept
     {
-        if (size >= 512)
-            throw size;
+        if (size >= MaxSize) { //throw size;
+        }
         if (m_size < size)
             memset(m_data + m_size, 0, size - m_size);
         m_size = size;
@@ -140,20 +160,20 @@ public:
 
     auto operator[](uint16_t i) noexcept
     {
-        if (i >= 512)
-            throw i;
+        if (i >= MaxSize) { //throw i;
+        }
         return (m_data[i]);
     }
     const auto operator[](uint16_t i) const noexcept
     {
-        if (i >= 512)
-            throw i;
+        if (i >= MaxSize) { //throw i;
+        }
         return (m_data[i]);
     }
 
     void clear()
     {
-        memset(m_data, 0, 512);
+        memset(m_data, 0, MaxSize);
         m_size = {};
     }
 

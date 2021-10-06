@@ -234,6 +234,7 @@ void MainWindow::initTvHoldingRegisters()
                     readHoldingRegisters(
                         ui->tvHoldingRegisters->model()->index(row, HoldingRegisters::Model::Value));
         });
+        pb->clicked(); // NOTE debug
     }
 }
 
@@ -346,11 +347,11 @@ void MainWindow::readHoldingRegisters(QModelIndex&& index)
         bool result {};
         auto reg = index.siblingAtColumn(HoldingRegisters::Model::Id).data(Qt::UserRole).toUInt();
         /**/ if constexpr (std::is_same_v<T, HoldingRegisters::Text>)
-            result = I::mymodbus()->readHoldingRegisters(reg, arg, ByteOrder::ABCD {}); //USonicFlowmeter
+            result = I::mymodbus()->readHoldingRegisters(reg, arg); //USonicFlowmeter
         else if constexpr (std::is_same_v<T, HoldingRegisters::SetLinaCoef>)
-            result = I::mymodbus()->readHoldingRegisters(reg, arg, ByteOrder::ABCD {});
+            result = I::mymodbus()->readHoldingRegisters(reg, arg);
         else
-            result = I::mymodbus()->readHoldingRegisters(reg, arg, ByteOrder::ABCD {});
+            result = I::mymodbus()->readHoldingRegisters(reg, arg);
 
         if (result) {
             model->setData(index.siblingAtColumn(HoldingRegisters::Model::Error), "");
@@ -431,9 +432,9 @@ void MainWindow::readInputRegisters(QModelIndex&& index)
                 arg,
                 ByteOrder::ABCD {}); //USonicFlowmeter
         else if constexpr (std::is_same_v<T, InputRegisters::SetLinaCoef>)
-            result = I::mymodbus()->readInputRegisters(reg, arg, ByteOrder::ABCD {});
+            result = I::mymodbus()->readInputRegisters(reg, arg);
         else
-            result = I::mymodbus()->readInputRegisters(reg, arg, ByteOrder::ABCD {});
+            result = I::mymodbus()->readInputRegisters(reg, arg);
 
         if (result) {
             model->setData(index.siblingAtColumn(InputRegisters::Model::Error), "");
