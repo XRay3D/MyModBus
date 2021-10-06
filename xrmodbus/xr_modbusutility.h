@@ -109,7 +109,7 @@ struct PDU {
 
 #if 0
 
-struct ByteVector : std::vector<std::byte> {
+struct ByteVector : std::vector<uint8_t> {
     uint16_t packSize() const noexcept
     {
         qDebug() << __FUNCTION__ << reinterpret_cast<const PDU*>(data())->adu1.size;
@@ -120,7 +120,7 @@ struct ByteVector : std::vector<std::byte> {
 #else
 class ByteVector {
     enum { MaxSize = 512 };
-    std::byte m_data[MaxSize] {};
+    uint8_t m_data[MaxSize] {};
     uint16_t m_size {};
 
 public:
@@ -131,12 +131,12 @@ public:
     auto size() const noexcept { return m_size; }
 
     auto begin() noexcept { return m_data + 0; }
-    auto end() { return m_data + m_size; }
+    auto end() noexcept { return m_data + m_size; }
 
     auto begin() const noexcept { return m_data + 0; }
     auto end() const noexcept { return m_data + m_size; }
 
-    auto insert(std::byte* insert, const std::byte* begin, const std::byte* end) noexcept
+    auto insert(uint8_t* insert, const uint8_t* begin, const uint8_t* end) noexcept
     {
         for (; begin < end; ++begin, ++insert, ++m_size)
             *insert = *begin;
@@ -152,7 +152,7 @@ public:
         m_size = size;
     }
 
-    void emplace_back(std::byte byte) noexcept
+    void emplace_back(uint8_t byte) noexcept
     {
         m_data[m_size] = byte;
         ++m_size;
@@ -177,15 +177,13 @@ public:
         m_size = {};
     }
 
-    uint16_t packSize() const noexcept
-    {
-        return reinterpret_cast<const PDU*>(m_data)->adu1.size;
-    }
+    uint16_t packSize() const noexcept { return reinterpret_cast<const PDU*>(m_data)->adu1.size; }
 
-    uint16_t crc() const noexcept
-    {
-        return *reinterpret_cast<const uint16_t*>(m_data + m_size - 2);
-    }
+    const PDU& pdu() const noexcept { return *reinterpret_cast<const PDU*>(m_data); }
+
+    PDU& pdu() noexcept { return *reinterpret_cast<PDU*>(m_data); }
+
+    uint16_t crc() const noexcept { return *reinterpret_cast<const uint16_t*>(m_data + m_size - 2); }
 };
 
 #endif

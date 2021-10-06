@@ -3,22 +3,26 @@ INCLUDEPATH = \
     $$PWD/src/ \
 
 HEADERS += \
-    $$PWD/libmodbus.h \
-    $$PWD/src/modbus-private.h \
-    $$PWD/src/modbus-rtu-private.h \
-    $$PWD/src/modbus-rtu.h \
-    $$PWD/src/modbus-version.h \
-    $$PWD/src/modbus-version.h.in \
-    $$PWD/src/modbus.h \
-#    $$PWD/src/modbus-tcp-private.h \
-#    $$PWD/src/modbus-tcp.h \
+#    $$PWD/libmodbus.h \
+#    $$PWD/src/modbus-private.h \
+#    $$PWD/src/modbus-rtu-private.h \
+#    $$PWD/src/modbus-rtu.h \
+##    $$PWD/src/modbus-tcp-private.h \
+##    $$PWD/src/modbus-tcp.h \
+#    $$PWD/src/modbus-version.h \
+#    $$PWD/src/modbus-version.h.in \
+#    $$PWD/src/modbus.h \
+    $$PWD/xr_modbus.h \
+    $$PWD/xr_modbusutility.h
 
 SOURCES += \
-    $$PWD/libmodbus.cpp \
-    $$PWD/src/modbus-data.c \
-    $$PWD/src/modbus-rtu.c \
-    $$PWD/src/modbus.c \
-#    $$PWD/src/modbus-tcp.c \
+#    $$PWD/libmodbus.cpp \
+#    $$PWD/src/modbus-data.c \
+#    $$PWD/src/modbus-rtu.c \
+##    $$PWD/src/modbus-tcp.c \
+#    $$PWD/src/modbus.c \
+    $$PWD/xr_modbus.cpp \
+    $$PWD/xr_modbusutility.cpp
 
 
 DISTFILES += \

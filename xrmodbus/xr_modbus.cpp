@@ -1,4 +1,4 @@
-#include "mymodbus.h"
+#include "xr_modbus.h"
 
 /* Table of CRC values for high-order byte */
 static constexpr uint8_t tableCrcHi[] = {
@@ -127,19 +127,19 @@ Modbus::Error Modbus::error() const
     return m_error;
 }
 
-uint16_t Modbus::crc16(std::span<std::byte> data)
+uint16_t Modbus::crc16(std::span<uint8_t> data)
 {
     union {
         uint16_t crc = 0xFFFF;
         struct {
-            uint8_t crc_lo; /* low CRC byte initialized */
-            uint8_t crc_hi; /* high CRC byte initialized */
+            uint8_t lo; /* low CRC byte initialized */
+            uint8_t hi; /* high CRC byte initialized */
         };
     } u;
     for (auto&& byte : data) {
-        auto i = u.crc_hi ^ static_cast<uint8_t>(byte);
-        u.crc_hi = u.crc_lo ^ tableCrcHi[i];
-        u.crc_lo = tableCrcLo[i];
+        auto i = u.hi ^ static_cast<uint8_t>(byte);
+        u.hi = u.lo ^ tableCrcHi[i];
+        u.lo = tableCrcLo[i];
     }
     return u.crc;
 }
@@ -162,15 +162,13 @@ int Modbus::writeRequest()
     return {}; //m_port->write(reinterpret_cast<const char*>(request.data()), request.size());
 }
 
-void Modbus::logRequest() { qDebug() << "request" << toHex(request); }
 
-void Modbus::logResponse() { qDebug() << "response" << toHex(response); }
 
 bool Modbus::readAndCheck()
 {
     if (semaphore.tryAcquire(5, m_timeout)
-        && response[0] == std::byte(m_address)
-        && bool(response[1] & std::byte { 0x80 })) {
+        && response[0] == uint8_t(m_address)
+        && bool(response[1] & uint8_t { 0x80 })) {
         m_errorString = EnumHelper::toString(m_error = static_cast<Error>(response.data()[2]));
         qDebug() << "err response" << toHex(response).mid(0, 10 /*5 bytes only*/);
         return {};
@@ -178,25 +176,8 @@ bool Modbus::readAndCheck()
     return true;
 }
 
-int Modbus::readResponse(size_t count)
-{
-    return semaphore.tryAcquire(count, m_timeout);
-}
+int Modbus::readResponse(size_t count) { return semaphore.tryAcquire(count, m_timeout); }
 
-void Modbus::addToRequest08(uint8_t data)
-{
-    request.emplace_back(std::byte { data });
-}
-
-void Modbus::addToRequest16(uint16_t data)
-{
-    union {
-        uint16_t d;
-        std::byte byte[2];
-    } u { .d = data };
-    request.emplace_back(u.byte[1]);
-    request.emplace_back(u.byte[0]);
-}
 
 bool Modbus::checkCrc()
 {

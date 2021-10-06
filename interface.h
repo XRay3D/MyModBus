@@ -3,7 +3,7 @@
 //#include "libmodbus.h"
 #include <QSemaphore>
 #include <QThread>
-#include <mymodbus.h>
+#include <xr_modbus.h>
 
 class I {
 //    inline static LibModbus* m_modbus = nullptr;

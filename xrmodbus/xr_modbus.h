@@ -1,8 +1,8 @@
 #pragma once
 
 #include "EnumHelper.h"
-#include "modbusutility.h"
 #include "timer.h"
+#include "xr_modbusutility.h"
 #include <QApplication>
 #include <QMutex>
 #include <QMutexLocker>
@@ -10,6 +10,7 @@
 #include <QSerialPort>
 #include <QThread>
 #include <QTimer>
+#include <span>
 
 class Object : public QObject {
     Q_OBJECT
@@ -102,29 +103,19 @@ public:
     };
     Q_ENUM(FunctionName)
 
-    //    template <FunctionName Name, class T, class ByteOrdering = ByteOrder::NoReorder>
-    //    bool read(uint16_t regAddress, T&& regData, ByteOrdering={})
-    //    {
-    //        /**/ if constexpr (Name == ReadInputRegisters)
-    //            return readHoldingRegisters(regAddress, std::forward<T>(regData), ordering);
-    //        else if constexpr (Name == ReadMultipleHoldingRegisters)
-    //            return readHoldingRegisters(regAddress, std::forward<T>(regData), ordering);
-    //        else
-    //            static_assert(false, "Invalid FunctionName");
-    //    }
-
     // HoldingRegisters
     template <class T, class ByteOrdering = ByteOrder::NoReorder>
     bool readHoldingRegisters(uint16_t regAddress, T& regData, ByteOrdering ordering = {})
     {
         using Ty = std::decay_t<T>;
         constexpr uint16_t size = sizeof(Ty) / 2;
+
         static_assert(!(sizeof(Ty) % 2), "bad data alinment");
         static_assert(size <= 125, "bad data size");
 
         QApplication::processEvents();
         QMutexLocker locker(&mutex);
-        Timer t(__FUNCTION__);
+        Timer<milliseconds> t(__FUNCTION__);
         bool ok {};
 
         prepare();
@@ -144,7 +135,7 @@ public:
             if (!checkCrc())
                 break;
 
-            Ty& tmp = *reinterpret_cast<T*>(response.data() + 3);
+            Ty& tmp = *reinterpret_cast<T*>(response.pdu().adu1.data);
             ByteOrder::reorder(tmp, ordering);
             regData = tmp;
             ok = true;
@@ -200,6 +191,45 @@ public:
         return ok;
     }
 
+    // ReadInputRegisters
+    template <class T, class ByteOrdering = ByteOrder::NoReorder>
+    bool readInputRegisters(uint16_t regAddress, T& regData, ByteOrdering ordering = {})
+    {
+        using Ty = std::decay_t<T>;
+        constexpr uint16_t size = sizeof(Ty) / 2;
+        static_assert(!(sizeof(Ty) % 2), "bad data alinment");
+        static_assert(size <= 125, "bad data size");
+
+        QApplication::processEvents();
+        QMutexLocker locker(&mutex);
+        Timer t(__FUNCTION__);
+        bool ok {};
+
+        prepare();
+        { // write
+            setStartOfRequest(m_address, ReadInputRegisters, regAddress);
+            addToRequest16(size);
+            auto crc = crc16(request);
+            addToRequest16(crc);
+            writeRequest();
+        }
+
+        do { // read
+            if (!readAndCheck())
+                break;
+            readResponse(response.packSize());
+            logResponse();
+            if (!checkCrc())
+                break;
+            Ty& tmp = *reinterpret_cast<T*>(response.pdu().adu1.data);
+            ByteOrder::reorder(tmp, ordering);
+            regData = tmp;
+            ok = true;
+        } while (0);
+
+        return ok;
+    }
+
     // Coils
     template <class T>
     bool readCoils(uint16_t regAddress, T& coils)
@@ -233,8 +263,8 @@ public:
                 break;
             if constexpr (/*std::size(coils) || */ std::is_array_v<T>) {
                 int ctr {};
-                for (std::byte c : std::span<std::byte> { response.begin() + 3, size }) {
-                    std::byte m { 0x01 };
+                for (uint8_t c : std::span<uint8_t> { response.pdu().adu1.data, size }) {
+                    uint8_t m { 0x01 };
                     for (int i = 1; i < 8; ++i, m <<= 1) {
                         coils[ctr++] = static_cast<bool>(c & m);
                         if (ctr == std::size(coils))
@@ -371,8 +401,8 @@ public:
                 break;
             if constexpr (/*std::size(coils) || */ std::is_array_v<T>) {
                 int ctr {};
-                for (std::byte c : std::span<std::byte> { response.begin() + 3, size }) {
-                    std::byte m { 0x01 };
+                for (uint8_t c : std::span<uint8_t> { response.pdu().adu1.data, size }) {
+                    uint8_t m { 0x01 };
                     for (int i = 1; i < 8; ++i, m <<= 1) {
                         coils[ctr++] = static_cast<bool>(c & m);
                         if (ctr == std::size(coils))
@@ -389,45 +419,6 @@ public:
         return ok;
     }
 
-    // ReadInputRegisters
-    template <class T, class ByteOrdering = ByteOrder::NoReorder>
-    bool readInputRegisters(uint16_t regAddress, T& regData, ByteOrdering ordering = {})
-    {
-        using Ty = std::decay_t<T>;
-        constexpr uint16_t size = sizeof(Ty) / 2;
-        static_assert(!(sizeof(Ty) % 2), "bad data alinment");
-        static_assert(size <= 125, "bad data size");
-
-        QApplication::processEvents();
-        QMutexLocker locker(&mutex);
-        Timer t(__FUNCTION__);
-        bool ok {};
-
-        prepare();
-        { // write
-            setStartOfRequest(m_address, ReadInputRegisters, regAddress);
-            addToRequest16(size);
-            auto crc = crc16(request);
-            addToRequest16(crc);
-            writeRequest();
-        }
-
-        do { // read
-            if (!readAndCheck())
-                break;
-            readResponse(response.packSize());
-            logResponse();
-            if (!checkCrc())
-                break;
-            Ty& tmp = *reinterpret_cast<T*>(response.data() + 3);
-            ByteOrder::reorder(tmp, ordering);
-            regData = tmp;
-            ok = true;
-        } while (0);
-
-        return ok;
-    }
-
     uint8_t
     address() const;
     void setAddress(uint8_t newAddress);
@@ -435,7 +426,7 @@ public:
     Error error() const;
     QString errorString() const { return m_errorString; }
 
-    uint16_t crc16(std::span<std::byte> data);
+    uint16_t crc16(std::span<uint8_t> data);
 
 private:
     QMutex mutex;
@@ -455,13 +446,23 @@ private:
 
     void prepare();
 
-    void addToRequest08(uint8_t data);
-    void addToRequest16(uint16_t data);
+    void addToRequest08(uint8_t data) { request.emplace_back(uint8_t { data }); }
+
+    void addToRequest16(uint16_t data)
+    {
+        union {
+            uint16_t d;
+            uint8_t byte[2];
+        } u { .d = data };
+        request.emplace_back(u.byte[1]);
+        request.emplace_back(u.byte[0]);
+    }
+
     template <class T>
     void addToRequestT(T& data)
     {
-        auto begin = reinterpret_cast<const std::byte*>(std::addressof(data));
-        auto end = reinterpret_cast<const std::byte*>(std::addressof(data)) + sizeof(T);
+        auto begin = reinterpret_cast<const uint8_t*>(std::addressof(data));
+        auto end = begin + sizeof(T);
         request.insert(request.end(), begin, end);
     }
 
@@ -469,8 +470,9 @@ private:
     bool checkCrc();
     int readResponse(size_t count);
 
-    void logResponse();
-    void logRequest();
+    void logRequest() { qDebug() << "request" << toHex(request); }
+    void logResponse() { qDebug() << "response" << toHex(response); }
+
     int writeRequest();
     Error m_error { NoError };
     void setStartOfRequest(uint8_t address, FunctionName function, uint16_t regAddress)

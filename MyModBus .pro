@@ -16,6 +16,7 @@ CONFIG(debug, debug|release) {
 DESTDIR = $$_PRO_FILE_PWD_/bin/
 
 QMAKE_CXXFLAGS += /std:c++latest
+
 DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000
 
 SOURCES += \
@@ -69,7 +70,8 @@ INCLUDEPATH += \
     magic_get/include/ \
     holdingregisters \
 
-include(libmodbus/libmodbus.pri)
+#include(libmodbus/libmodbus.pri)
+include(xrmodbus/xrmodbus.pri)
 
 # Default rules for deployment.
 #qnx: target.path = /tmp/$${TARGET}/bin
