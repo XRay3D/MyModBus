@@ -53,7 +53,7 @@ public:
     SerialPort(Modbus* modBus)
         : modBus { modBus }
     {
-        setPortName(1 ? "COM10" : "COM28");
+        setPortName(0 ? "COM10" : "COM8");
         setBaudRate(Baud115200);
         setParity(NoParity);
         setDataBits(Data8);
@@ -162,8 +162,6 @@ int Modbus::writeRequest()
     return {}; //m_port->write(reinterpret_cast<const char*>(request.data()), request.size());
 }
 
-
-
 bool Modbus::readAndCheck()
 {
     if (semaphore.tryAcquire(5, m_timeout)
@@ -177,7 +175,6 @@ bool Modbus::readAndCheck()
 }
 
 int Modbus::readResponse(size_t count) { return semaphore.tryAcquire(count, m_timeout); }
-
 
 bool Modbus::checkCrc()
 {

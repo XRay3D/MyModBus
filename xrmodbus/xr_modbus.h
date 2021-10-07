@@ -450,12 +450,9 @@ private:
 
     void addToRequest16(uint16_t data)
     {
-        union {
-            uint16_t d;
-            uint8_t byte[2];
-        } u { .d = data };
-        request.emplace_back(u.byte[1]);
-        request.emplace_back(u.byte[0]);
+        U u { .u16 = data };
+        request.emplace_back(u.u8[1]);
+        request.emplace_back(u.u8[0]);
     }
 
     template <class T>

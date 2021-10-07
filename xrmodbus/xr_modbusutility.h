@@ -8,6 +8,11 @@
 
 namespace rng = std::ranges;
 
+union U {
+    uint16_t u16;
+    uint8_t u8[2];
+};
+
 namespace ByteOrder {
 
 struct Swap2B {
@@ -15,30 +20,21 @@ struct Swap2B {
     Swap2B(std::array<uint16_t, S>& values)
     {
         for (auto& v : values) {
-            union {
-                uint8_t u8[2];
-                uint16_t u16;
-            } U { .u16 = v };
-            std::swap(U.u8[0], U.u8[1]);
+            U u { .u16 = v };
+            std::swap(u.u8[0], u.u8[1]);
         }
     }
     Swap2B() { }
     Swap2B(uint16_t& val)
     {
-        union {
-            uint8_t u8[2];
-            uint16_t u16;
-        } U { .u16 = val };
-        std::swap(U.u8[0], U.u8[1]);
+        U u { .u16 = val };
+        std::swap(u.u8[0], u.u8[1]);
     }
     uint16_t operator()(uint16_t& val)
     {
-        union {
-            uint8_t u8[2];
-            uint16_t u16;
-        } U { .u16 = val };
-        std::swap(U.u8[0], U.u8[1]);
-        return U.u16;
+        U u { .u16 = val };
+        std::swap(u.u8[0], u.u8[1]);
+        return u.u16;
     }
 };
 
@@ -120,26 +116,28 @@ struct ByteVector : std::vector<uint8_t> {
 #else
 class ByteVector {
     enum { MaxSize = 512 };
-    uint8_t m_data[MaxSize] {};
-    uint16_t m_size {};
+    uint8_t data_[MaxSize] {};
+    uint16_t size_ {};
 
 public:
     ByteVector() { }
-    auto data() noexcept { return m_data; }
-    auto size() noexcept { return m_size; }
-    auto data() const noexcept { return m_data; }
-    auto size() const noexcept { return m_size; }
+    auto data() const noexcept { return data_; }
+    auto data() noexcept { return data_; }
 
-    auto begin() noexcept { return m_data + 0; }
-    auto end() noexcept { return m_data + m_size; }
+    auto size() const noexcept { return size_; }
+    auto size() noexcept { return size_; }
 
-    auto begin() const noexcept { return m_data + 0; }
-    auto end() const noexcept { return m_data + m_size; }
+    auto begin() const noexcept { return data_; }
+    auto begin() noexcept { return data_; }
+
+    auto end() const noexcept { return data_ + size_; }
+    auto end() noexcept { return data_ + size_; }
 
     auto insert(uint8_t* insert, const uint8_t* begin, const uint8_t* end) noexcept
     {
-        for (; begin < end; ++begin, ++insert, ++m_size)
-            *insert = *begin;
+        size_ += end - begin;
+        while (begin < end)
+            *insert++ = *begin++;
         return insert;
     }
 
@@ -147,43 +145,45 @@ public:
     {
         if (size >= MaxSize) { //throw size;
         }
-        if (m_size < size)
-            memset(m_data + m_size, 0, size - m_size);
-        m_size = size;
+        if (size_ < size)
+            memset(data_ + size_, 0, size - size_);
+        size_ = size;
     }
 
     void emplace_back(uint8_t byte) noexcept
     {
-        m_data[m_size] = byte;
-        ++m_size;
+        if (size_ >= MaxSize) { //throw size;
+        }
+        data_[size_] = byte;
+        ++size_;
     }
 
     auto operator[](uint16_t i) noexcept
     {
         if (i >= MaxSize) { //throw i;
         }
-        return (m_data[i]);
+        return (data_[i]);
     }
     const auto operator[](uint16_t i) const noexcept
     {
         if (i >= MaxSize) { //throw i;
         }
-        return (m_data[i]);
+        return (data_[i]);
     }
 
     void clear()
     {
-        memset(m_data, 0, MaxSize);
-        m_size = {};
+        memset(data_, 0, MaxSize);
+        size_ = {};
     }
 
-    uint16_t packSize() const noexcept { return reinterpret_cast<const PDU*>(m_data)->adu1.size; }
+    uint16_t packSize() const noexcept { return reinterpret_cast<const PDU*>(data_)->adu1.size; }
 
-    const PDU& pdu() const noexcept { return *reinterpret_cast<const PDU*>(m_data); }
+    const PDU& pdu() const noexcept { return *reinterpret_cast<const PDU*>(data_); }
 
-    PDU& pdu() noexcept { return *reinterpret_cast<PDU*>(m_data); }
+    PDU& pdu() noexcept { return *reinterpret_cast<PDU*>(data_); }
 
-    uint16_t crc() const noexcept { return *reinterpret_cast<const uint16_t*>(m_data + m_size - 2); }
+    uint16_t crc() const noexcept { return *reinterpret_cast<const uint16_t*>(data_ + size_ - 2); }
 };
 
 #endif
