@@ -87,14 +87,15 @@ void reorder(T& reg, ByteOrdering)
 
 struct PDU {
     uint8_t address;
+    uint8_t functionCode;
     union {
         struct ADU1 {
-            uint8_t functionCode;
+            //uint8_t functionCode;
             uint8_t size;
             uint8_t data[1];
         } adu1;
         struct ADU2 {
-            uint8_t functionCode;
+            //uint8_t functionCode;
             uint8_t data[1];
         } adu2;
     };
@@ -116,22 +117,25 @@ struct ByteVector : std::vector<uint8_t> {
 #else
 class ByteVector {
     enum { MaxSize = 512 };
-    uint8_t data_[MaxSize] {};
+    union U {
+        uint8_t data[MaxSize] {};
+        PDU pdu;
+    } u {};
     uint16_t size_ {};
 
 public:
     ByteVector() { }
-    auto data() const noexcept { return data_; }
-    auto data() noexcept { return data_; }
+    auto data() const noexcept { return u.data; }
+    auto data() noexcept { return u.data; }
 
     auto size() const noexcept { return size_; }
     auto size() noexcept { return size_; }
 
-    auto begin() const noexcept { return data_; }
-    auto begin() noexcept { return data_; }
+    auto begin() const noexcept { return u.data; }
+    auto begin() noexcept { return u.data; }
 
-    auto end() const noexcept { return data_ + size_; }
-    auto end() noexcept { return data_ + size_; }
+    auto end() const noexcept { return u.data + size_; }
+    auto end() noexcept { return u.data + size_; }
 
     auto insert(uint8_t* insert, const uint8_t* begin, const uint8_t* end) noexcept
     {
@@ -146,7 +150,7 @@ public:
         if (size >= MaxSize) { //throw size;
         }
         if (size_ < size)
-            memset(data_ + size_, 0, size - size_);
+            memset(u.data + size_, 0, size - size_);
         size_ = size;
     }
 
@@ -154,7 +158,7 @@ public:
     {
         if (size_ >= MaxSize) { //throw size;
         }
-        data_[size_] = byte;
+        u.data[size_] = byte;
         ++size_;
     }
 
@@ -162,28 +166,28 @@ public:
     {
         if (i >= MaxSize) { //throw i;
         }
-        return (data_[i]);
+        return (u.data[i]);
     }
     const auto operator[](uint16_t i) const noexcept
     {
         if (i >= MaxSize) { //throw i;
         }
-        return (data_[i]);
+        return (u.data[i]);
     }
 
     void clear()
     {
-        memset(data_, 0, MaxSize);
+        memset(u.data, 0, MaxSize);
         size_ = {};
     }
 
-    uint16_t packSize() const noexcept { return reinterpret_cast<const PDU*>(data_)->adu1.size; }
+    uint16_t packSize() const noexcept { return u.pdu.adu1.size; }
 
-    const PDU& pdu() const noexcept { return *reinterpret_cast<const PDU*>(data_); }
+    const PDU& pdu() const noexcept { return u.pdu; }
 
-    PDU& pdu() noexcept { return *reinterpret_cast<PDU*>(data_); }
+    PDU& pdu() noexcept { return u.pdu; }
 
-    uint16_t crc() const noexcept { return *reinterpret_cast<const uint16_t*>(data_ + size_ - 2); }
+    uint16_t crc() const noexcept { return *reinterpret_cast<const uint16_t*>(u.data + size_ - 2); }
 };
 
 #endif

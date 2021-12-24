@@ -53,7 +53,7 @@ public:
     SerialPort(Modbus* modBus)
         : modBus { modBus }
     {
-        setPortName(0 ? "COM10" : "COM8");
+        setPortName(0 ? "COM10" : "COM5");
         setBaudRate(Baud115200);
         setParity(NoParity);
         setDataBits(Data8);
@@ -165,8 +165,8 @@ int Modbus::writeRequest()
 bool Modbus::readAndCheck()
 {
     if (semaphore.tryAcquire(5, m_timeout)
-        && response[0] == uint8_t(m_address)
-        && bool(response[1] & uint8_t { 0x80 })) {
+        && response.pdu().address == uint8_t(m_address)
+        && bool(response.pdu().functionCode & uint8_t { 0x80 })) {
         m_errorString = EnumHelper::toString(m_error = static_cast<Error>(response.data()[2]));
         qDebug() << "err response" << toHex(response).mid(0, 10 /*5 bytes only*/);
         return {};
