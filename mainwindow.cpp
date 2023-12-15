@@ -20,8 +20,7 @@ using LibModbus = Modbus;
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
-    , ui(new Ui::MainWindow)
-{
+    , ui(new Ui::MainWindow) {
     ui->setupUi(this);
     initCbxPorts();
     initTableView();
@@ -29,14 +28,12 @@ MainWindow::MainWindow(QWidget* parent)
     // regDataGen();
 }
 
-MainWindow::~MainWindow()
-{
+MainWindow::~MainWindow() {
     saveSettings();
     delete ui;
 }
 
-void MainWindow::loadSettings()
-{
+void MainWindow::loadSettings() {
     QSettings settings;
     settings.beginGroup("MainWindow");
     restoreGeometry(settings.value("Geometry").toByteArray());
@@ -51,15 +48,14 @@ void MainWindow::loadSettings()
     settings.endGroup();
 }
 
-void MainWindow::saveSettings()
-{
+void MainWindow::saveSettings() {
     QSettings settings;
     settings.beginGroup("MainWindow");
     settings.setValue("Geometry", saveGeometry());
     settings.setValue("State", saveState());
     settings.setValue("cbxPorts", ui->cbxPorts->currentText());
-    int rbCtr {};
-    for (auto rb : ui->grbxAcces->findChildren<QRadioButton*>()) {
+    int rbCtr{};
+    for (auto rb: ui->grbxAcces->findChildren<QRadioButton*>()) {
         if (rb->isChecked()) {
             settings.setValue("radioButtonAcces", rbCtr);
             break;
@@ -67,7 +63,7 @@ void MainWindow::saveSettings()
         ++rbCtr;
     }
     rbCtr = {};
-    for (auto rb : ui->grbxType->findChildren<QRadioButton*>()) {
+    for (auto rb: ui->grbxType->findChildren<QRadioButton*>()) {
         if (rb->isChecked()) {
             settings.setValue("radioButtonType", rbCtr);
             break;
@@ -77,17 +73,15 @@ void MainWindow::saveSettings()
     settings.endGroup();
 }
 
-void MainWindow::initCbxPorts()
-{
-    auto spInfos { QSerialPortInfo::availablePorts().toVector() };
+void MainWindow::initCbxPorts() {
+    auto spInfos{QSerialPortInfo::availablePorts().toVector()};
     rng::sort(spInfos, {}, [](const QSerialPortInfo& pi) { return pi.portName().midRef(3).toUInt(); });
-    for (auto&& pi : spInfos)
+    for (auto&& pi: spInfos)
         ui->cbxPorts->addItem(pi.portName());
-    //connect(ui->cbxPorts, &QComboBox::currentTextChanged, I::mymodbus(), &MyModbus::setPortName);
+    // connect(ui->cbxPorts, &QComboBox::currentTextChanged, I::mymodbus(), &MyModbus::setPortName);
 }
 
-void MainWindow::initTableView()
-{
+void MainWindow::initTableView() {
     initTvHoldingRegisters();
     initTvInputRegisters();
 
@@ -95,8 +89,7 @@ void MainWindow::initTableView()
     initTvDiscreteInputs();
 }
 
-void MainWindow::initTvHoldingRegisters()
-{
+void MainWindow::initTvHoldingRegisters() {
     { // HoldingRegisters
         QSortFilterProxyModel* proxyModel = new QSortFilterProxyModel(this);
         proxyModel->setSourceModel(m_hrModel = new HoldingRegisters::Model(this));
@@ -104,7 +97,7 @@ void MainWindow::initTvHoldingRegisters()
         ui->tvHoldingRegisters->setModel(proxyModel);
 
         //        ui->tvHoldingRegisters->setSortingEnabled(true);
-        ui->tvHoldingRegisters->sortByColumn(HoldingRegisters::Model::Acces);
+        ui->tvHoldingRegisters->sortByColumn(HoldingRegisters::Model::Acces, Qt::AscendingOrder);
         ui->tvHoldingRegisters->setItemDelegateForColumn(HoldingRegisters::Model::Value,
             new HoldingRegisters::ItemDelegate(this));
 
@@ -144,17 +137,16 @@ void MainWindow::initTvHoldingRegisters()
                 };
 
                 if (horizontalHeader->logicalIndexAt(pos) == HoldingRegisters::Model::Type) {
-                    auto typeOf = [&]<size_t... Is>(std::index_sequence<Is...>)
-                    { // бежим по типам
+                    auto typeOf = [&]<size_t... Is>(std::index_sequence<Is...>) { // бежим по типам
                         auto addAct2 = [&]<size_t I>(key<I>) {
                             addAct(HoldingRegisters::Model::Type,
                                 I,
-                                typeid(std::get<I>(HoldingRegisters::Data::variant {})).name());
+                                typeid(std::get<I>(HoldingRegisters::Data::variant{})).name());
                         };
-                        (addAct2(key<Is> {}), ...);
+                        (addAct2(key<Is>{}), ...);
                     };
                     typeOf(std::make_index_sequence<
-                        std::variant_size_v<HoldingRegisters::Data::variant>> {});
+                        std::variant_size_v<HoldingRegisters::Data::variant>>{});
                     menu.exec(horizontalHeader->mapToGlobal(pos));
                 }
                 if (horizontalHeader->logicalIndexAt(pos) == HoldingRegisters::Model::Acces) {
@@ -169,11 +161,10 @@ void MainWindow::initTvHoldingRegisters()
             });
 
         { // radiobuttons Type
-            auto typeOf = [this]<size_t... Is>(std::index_sequence<Is...>)
-            {
+            auto typeOf = [this]<size_t... Is>(std::index_sequence<Is...>) {
                 auto addRadioButton = [this]<size_t I>(key<I>) {
                     auto radioButton = new QRadioButton(
-                        typeid(std::get<I>(HoldingRegisters::Data::variant {})).name(), this);
+                        typeid(std::get<I>(HoldingRegisters::Data::variant{})).name(), this);
                     ui->vlayType->addWidget(radioButton);
                     connect(radioButton, &QRadioButton::toggled, [id = I, this](bool togled) {
                         for (int row = 0; row < m_hrModel->rowCount(); ++row) {
@@ -187,7 +178,7 @@ void MainWindow::initTvHoldingRegisters()
                         }
                     });
                 };
-                (addRadioButton(key<Is> {}), ...);
+                (addRadioButton(key<Is>{}), ...);
                 auto radioButton = new QRadioButton("All", this);
                 ui->vlayType->addWidget(radioButton);
                 connect(radioButton, &QRadioButton::toggled, [this](bool togled) {
@@ -196,7 +187,7 @@ void MainWindow::initTvHoldingRegisters()
                             ui->tvHoldingRegisters->showRow(row);
                 });
             };
-            typeOf(std::make_index_sequence<std::variant_size_v<HoldingRegisters::Data::variant>> {});
+            typeOf(std::make_index_sequence<std::variant_size_v<HoldingRegisters::Data::variant>>{});
         }
         { // radiobuttons Acces
             auto addRadioButton = [this](auto E) {
@@ -226,7 +217,7 @@ void MainWindow::initTvHoldingRegisters()
             });
         }
         auto pb = new QPushButton("Read All Holding Registers (F1)", this);
-        pb->setShortcut(QKeySequence { Qt::Key_F1 });
+        pb->setShortcut(QKeySequence{Qt::Key_F1});
         ui->verticalLayout->addWidget(pb);
         connect(pb, &QPushButton::clicked, [this] {
             for (int row = 0; row < m_hrModel->rowCount(); ++row)
@@ -238,14 +229,13 @@ void MainWindow::initTvHoldingRegisters()
     }
 }
 
-void MainWindow::initTvCoils()
-{
+void MainWindow::initTvCoils() {
     { // Coils
         QSortFilterProxyModel* proxyModel = new QSortFilterProxyModel(this);
         proxyModel->setSourceModel(m_clModel = new Coils::Model(this));
         proxyModel->setDynamicSortFilter(true);
         ui->tvCoils->setModel(proxyModel);
-        ui->tvCoils->sortByColumn(HoldingRegisters::Model::Acces);
+        ui->tvCoils->sortByColumn(HoldingRegisters::Model::Acces, Qt::AscendingOrder);
         //        ui->tvCoils->setItemDelegateForColumn(HoldingRegisters::Model::Value, new HoldingRegisters::ItemDelegate(this));
 
         auto verticalHeader = ui->tvCoils->verticalHeader();
@@ -259,7 +249,7 @@ void MainWindow::initTvCoils()
         horizontalHeader->setContextMenuPolicy(Qt::CustomContextMenu);
 
         auto pb = new QPushButton("Read All Coils (F3)", this);
-        pb->setShortcut(QKeySequence { Qt::Key_F3 });
+        pb->setShortcut(QKeySequence{Qt::Key_F3});
         ui->verticalLayout->addWidget(pb);
         connect(pb, &QPushButton::clicked, [this] {
             for (int row = 0; row < m_clModel->rowCount(); ++row)
@@ -269,15 +259,14 @@ void MainWindow::initTvCoils()
     }
 }
 
-void MainWindow::initTvDiscreteInputs()
-{
+void MainWindow::initTvDiscreteInputs() {
     { // DiscreteInputs
-        //static int m_diModel;
+        // static int m_diModel;
         QSortFilterProxyModel* proxyModel = new QSortFilterProxyModel(this);
         proxyModel->setSourceModel(m_diModel = new DiscreteInputs::Model(this));
         proxyModel->setDynamicSortFilter(true);
         ui->tvDiscreteInputs->setModel(proxyModel);
-        ui->tvDiscreteInputs->sortByColumn(HoldingRegisters::Model::Acces);
+        ui->tvDiscreteInputs->sortByColumn(HoldingRegisters::Model::Acces, Qt::AscendingOrder);
         //        ui->tvDiscreteInputs->setItemDelegateForColumn(HoldingRegisters::Model::Value, new HoldingRegisters::ItemDelegate(this));
 
         auto verticalHeader = ui->tvDiscreteInputs->verticalHeader();
@@ -291,7 +280,7 @@ void MainWindow::initTvDiscreteInputs()
         horizontalHeader->setContextMenuPolicy(Qt::CustomContextMenu);
 
         auto pb = new QPushButton("Read All Discrete Inputs (F4)", this);
-        pb->setShortcut(QKeySequence { Qt::Key_F4 });
+        pb->setShortcut(QKeySequence{Qt::Key_F4});
         ui->verticalLayout->addWidget(pb);
         connect(pb, &QPushButton::clicked, [this] {
             for (int row = 0; row < m_diModel->rowCount(); ++row)
@@ -302,15 +291,14 @@ void MainWindow::initTvDiscreteInputs()
     }
 }
 
-void MainWindow::initTvInputRegisters()
-{
+void MainWindow::initTvInputRegisters() {
     { // InputRegisters
-        //static int m_irModel;
+        // static int m_irModel;
         QSortFilterProxyModel* proxyModel = new QSortFilterProxyModel(this);
         proxyModel->setSourceModel(m_irModel = new InputRegisters::Model(this));
         proxyModel->setDynamicSortFilter(true);
         ui->tvInputRegisters->setModel(proxyModel);
-        ui->tvInputRegisters->sortByColumn(HoldingRegisters::Model::Acces);
+        ui->tvInputRegisters->sortByColumn(HoldingRegisters::Model::Acces, Qt::AscendingOrder);
         //        ui->tvInputRegisters->setItemDelegateForColumn(HoldingRegisters::Model::Value, new HoldingRegisters::ItemDelegate(this));
 
         auto verticalHeader = ui->tvInputRegisters->verticalHeader();
@@ -324,7 +312,7 @@ void MainWindow::initTvInputRegisters()
         horizontalHeader->setContextMenuPolicy(Qt::CustomContextMenu);
 
         auto pb = new QPushButton("Read All Input Registers (F2)", this);
-        pb->setShortcut(QKeySequence { Qt::Key_F2 });
+        pb->setShortcut(QKeySequence{Qt::Key_F2});
         ui->verticalLayout->addWidget(pb);
         connect(pb, &QPushButton::clicked, [this] {
             for (int row = 0; row < m_irModel->rowCount(); ++row)
@@ -335,8 +323,7 @@ void MainWindow::initTvInputRegisters()
     }
 }
 
-void MainWindow::readHoldingRegisters(QModelIndex&& index)
-{
+void MainWindow::readHoldingRegisters(QModelIndex&& index) {
     if (!index.isValid())
         return;
     auto& var = HoldingRegisters::toRVariant(index);
@@ -344,10 +331,10 @@ void MainWindow::readHoldingRegisters(QModelIndex&& index)
     auto visitor = [this, &index](auto&& arg) {
         using T = std::decay_t<decltype(arg)>;
         auto model = ui->tvHoldingRegisters->model();
-        bool result {};
+        bool result{};
         auto reg = index.siblingAtColumn(HoldingRegisters::Model::Id).data(Qt::UserRole).toUInt();
         /**/ if constexpr (std::is_same_v<T, HoldingRegisters::Text>)
-            result = I::mymodbus()->readHoldingRegisters(reg, arg); //USonicFlowmeter
+            result = I::mymodbus()->readHoldingRegisters(reg, arg); // USonicFlowmeter
         else if constexpr (std::is_same_v<T, HoldingRegisters::SetLinaCoef>)
             result = I::mymodbus()->readHoldingRegisters(reg, arg);
         else
@@ -358,23 +345,22 @@ void MainWindow::readHoldingRegisters(QModelIndex&& index)
             model->setData(index.siblingAtColumn(HoldingRegisters::Model::Value), QVariant::fromValue(arg));
             emit model->dataChanged(index.siblingAtColumn(HoldingRegisters::Model::Value),
                 index.siblingAtColumn(HoldingRegisters::Model::Error),
-                { Qt::DisplayRole });
+                {Qt::DisplayRole});
         } else {
             index = index.siblingAtColumn(HoldingRegisters::Model::Error);
             model->setData(index, I::mymodbus()->errorString());
-            emit model->dataChanged(index, index, { Qt::DisplayRole });
+            emit model->dataChanged(index, index, {Qt::DisplayRole});
         }
     };
     std::visit(visitor, var);
 }
 
-void MainWindow::readCoils(QModelIndex&& index)
-{
+void MainWindow::readCoils(QModelIndex&& index) {
     if (!index.isValid())
         return;
     ui->tvCoils->selectRow(index.row());
 
-    int arg {};
+    int arg{};
     auto reg = index.siblingAtColumn(Coils::Model::Id).data(Qt::UserRole).toUInt();
     bool result = I::mymodbus()->readCoils(reg, arg);
     auto model = ui->tvCoils->model();
@@ -384,21 +370,20 @@ void MainWindow::readCoils(QModelIndex&& index)
         model->setData(index.siblingAtColumn(Coils::Model::Value), QVariant::fromValue(arg), Qt::UserRole);
         emit model->dataChanged(index.siblingAtColumn(Coils::Model::Value),
             index.siblingAtColumn(Coils::Model::Error),
-            { Qt::DisplayRole });
+            {Qt::DisplayRole});
     } else {
         index = index.siblingAtColumn(Coils::Model::Error);
         model->setData(index, I::mymodbus()->errorString());
-        emit model->dataChanged(index, index, { Qt::DisplayRole });
+        emit model->dataChanged(index, index, {Qt::DisplayRole});
     }
 }
 
-void MainWindow::readDiscreteInputs(QModelIndex&& index)
-{
+void MainWindow::readDiscreteInputs(QModelIndex&& index) {
     if (!index.isValid())
         return;
     ui->tvDiscreteInputs->selectRow(index.row());
 
-    int arg {};
+    int arg{};
     auto reg = index.siblingAtColumn(DiscreteInputs::Model::Id).data(Qt::UserRole).toUInt();
     bool result = I::mymodbus()->readDiscreteInputs(reg, arg);
     auto model = ui->tvDiscreteInputs->model();
@@ -408,16 +393,15 @@ void MainWindow::readDiscreteInputs(QModelIndex&& index)
         model->setData(index.siblingAtColumn(DiscreteInputs::Model::Value), QVariant::fromValue(arg), Qt::UserRole);
         emit model->dataChanged(index.siblingAtColumn(DiscreteInputs::Model::Value),
             index.siblingAtColumn(DiscreteInputs::Model::Error),
-            { Qt::DisplayRole });
+            {Qt::DisplayRole});
     } else {
         index = index.siblingAtColumn(DiscreteInputs::Model::Error);
         model->setData(index, I::mymodbus()->errorString());
-        emit model->dataChanged(index, index, { Qt::DisplayRole });
+        emit model->dataChanged(index, index, {Qt::DisplayRole});
     }
 }
 
-void MainWindow::readInputRegisters(QModelIndex&& index)
-{
+void MainWindow::readInputRegisters(QModelIndex&& index) {
     if (!index.isValid())
         return;
     auto& var = InputRegisters::toRVariant(index);
@@ -425,12 +409,12 @@ void MainWindow::readInputRegisters(QModelIndex&& index)
     auto visitor = [this, &index](auto&& arg) {
         using T = std::decay_t<decltype(arg)>;
         auto model = ui->tvInputRegisters->model();
-        bool result {};
+        bool result{};
         auto reg = index.siblingAtColumn(InputRegisters::Model::Id).data(Qt::UserRole).toUInt();
         /**/ if constexpr (std::is_same_v<T, InputRegisters::Text>)
             result = I::mymodbus()->readInputRegisters(reg,
                 arg,
-                ByteOrder::ABCD {}); //USonicFlowmeter
+                ByteOrder::ABCD{}); // USonicFlowmeter
         else if constexpr (std::is_same_v<T, InputRegisters::SetLinaCoef>)
             result = I::mymodbus()->readInputRegisters(reg, arg);
         else
@@ -442,11 +426,11 @@ void MainWindow::readInputRegisters(QModelIndex&& index)
                 QVariant::fromValue(arg));
             emit model->dataChanged(index.siblingAtColumn(InputRegisters::Model::Value),
                 index.siblingAtColumn(InputRegisters::Model::Error),
-                { Qt::DisplayRole });
+                {Qt::DisplayRole});
         } else {
             index = index.siblingAtColumn(InputRegisters::Model::Error);
             model->setData(index, I::mymodbus()->errorString());
-            emit model->dataChanged(index, index, { Qt::DisplayRole });
+            emit model->dataChanged(index, index, {Qt::DisplayRole});
         }
     };
     std::visit(visitor, var);
@@ -454,15 +438,14 @@ void MainWindow::readInputRegisters(QModelIndex&& index)
 
 HoldingRegisters::Model* MainWindow::model() const { return m_hrModel; }
 
-void MainWindow::on_pbReadSelected_clicked()
-{
-    for (auto&& index : ui->tvHoldingRegisters->selectionModel()->selectedRows())
+void MainWindow::on_pbReadSelected_clicked() {
+    for (auto&& index: ui->tvHoldingRegisters->selectionModel()->selectedRows())
         readHoldingRegisters(index.siblingAtColumn(HoldingRegisters::Model::Value));
 }
 
-//void MainWindow::regDataGen()
+// void MainWindow::regDataGen()
 //{
-//    QMap<QString, QVector<QString>> reg;
+//     QMap<QString, QVector<QString>> reg;
 
 //    if (QFile file("../DataBase.cpp"); file.open(QIODevice::ReadOnly)) {
 //        while (!file.atEnd()) {

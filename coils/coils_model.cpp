@@ -62,7 +62,7 @@ QVariant Model::data(const QModelIndex& index, int role) const {
         return data.data; //        return std::visit([](auto&& arg) { return QVariant::fromValue(arg); }, data.data);
     else if(role == Qt::TextAlignmentRole && index.column())
         return Qt::AlignCenter;
-    else if(role == Qt::BackgroundColorRole && index.column() == Value)
+    else if(role == Qt::BackgroundRole && index.column() == Value)
         return data.data ? QColor(0x7F, 0xFF, 0x7F)
                          : QColor(0xFF, 0x7F, 0x7F);
     return {};

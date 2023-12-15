@@ -1,7 +1,7 @@
 #pragma once
 
-#include "EnumHelper.h"
-#include "timer.h"
+#include "../EnumHelper.h"
+#include "../timer.h"
 #include "xr_modbusutility.h"
 #include <QApplication>
 #include <QMutex>
