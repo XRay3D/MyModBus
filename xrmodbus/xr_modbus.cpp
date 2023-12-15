@@ -19,8 +19,7 @@ static constexpr uint8_t tableCrcHi[] = {
     0x80, 0x41, 0x00, 0xC1, 0x81, 0x40, 0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41, 0x01,
     0xC0, 0x80, 0x41, 0x00, 0xC1, 0x81, 0x40, 0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41,
     0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41, 0x01, 0xC0, 0x80, 0x41, 0x00, 0xC1, 0x81,
-    0x40
-};
+    0x40};
 
 /* Table of CRC values for low-order byte */
 static constexpr uint8_t tableCrcLo[] = {
@@ -41,8 +40,7 @@ static constexpr uint8_t tableCrcLo[] = {
     0x5D, 0x9D, 0x5F, 0x9F, 0x9E, 0x5E, 0x5A, 0x9A, 0x9B, 0x5B, 0x99, 0x59, 0x58, 0x98, 0x88,
     0x48, 0x49, 0x89, 0x4B, 0x8B, 0x8A, 0x4A, 0x4E, 0x8E, 0x8F, 0x4F, 0x8D, 0x4D, 0x4C, 0x8C,
     0x44, 0x84, 0x85, 0x45, 0x87, 0x47, 0x46, 0x86, 0x82, 0x42, 0x43, 0x83, 0x41, 0x81, 0x80,
-    0x40
-};
+    0x40};
 
 int id = qRegisterMetaType<ByteVector>("ByteVector");
 
@@ -51,8 +49,7 @@ class SerialPort : public QSerialPort {
 
 public:
     SerialPort(Modbus* modBus)
-        : modBus { modBus }
-    {
+        : modBus{modBus} {
         setPortName(0 ? "COM10" : "COM5");
         setBaudRate(Baud115200);
         setParity(NoParity);
@@ -65,8 +62,7 @@ public:
     }
     virtual ~SerialPort() { }
 
-    void readyReadSlot()
-    {
+    void readyReadSlot() {
         auto available = bytesAvailable();
         if (!available)
             return;
@@ -80,8 +76,7 @@ public:
 
     void openSlot() { open(QIODevice::ReadWrite); }
 
-    void write(const ByteVector& data)
-    {
+    void write(const ByteVector& data) {
         QSerialPort::write(reinterpret_cast<const char*>(data.data()), data.size());
     }
 
@@ -92,8 +87,7 @@ protected:
 
 Modbus::Modbus(QObject* parent)
     : Object(parent)
-    , m_port { new SerialPort { this } }
-{
+    , m_port{new SerialPort{this}} {
     m_port->moveToThread(&portThread);
     connect(&portThread, &QThread::finished, m_port, &QObject::deleteLater);
 
@@ -107,14 +101,12 @@ Modbus::Modbus(QObject* parent)
     portThread.start(QThread::NormalPriority);
 }
 
-Modbus::~Modbus()
-{
+Modbus::~Modbus() {
     portThread.quit();
     portThread.wait();
 }
 
-void Modbus::prepare()
-{
+void Modbus::prepare() {
     request.clear();
     response.clear();
     m_errorString.clear();
@@ -122,13 +114,11 @@ void Modbus::prepare()
     m_port->readAll();
 }
 
-Modbus::Error Modbus::error() const
-{
+Modbus::Error Modbus::error() const {
     return m_error;
 }
 
-uint16_t Modbus::crc16(std::span<uint8_t> data)
-{
+uint16_t Modbus::crc16(std::span<uint8_t> data) {
     union {
         uint16_t crc = 0xFFFF;
         struct {
@@ -136,7 +126,7 @@ uint16_t Modbus::crc16(std::span<uint8_t> data)
             uint8_t hi; /* high CRC byte initialized */
         };
     } u;
-    for (auto&& byte : data) {
+    for (auto&& byte: data) {
         auto i = u.hi ^ static_cast<uint8_t>(byte);
         u.hi = u.lo ^ tableCrcHi[i];
         u.lo = tableCrcLo[i];
@@ -144,29 +134,25 @@ uint16_t Modbus::crc16(std::span<uint8_t> data)
     return u.crc;
 }
 
-uint8_t Modbus::address() const
-{
+uint8_t Modbus::address() const {
     return m_address;
 }
 
-void Modbus::setAddress(uint8_t newAddress)
-{
+void Modbus::setAddress(uint8_t newAddress) {
     m_address = newAddress;
 }
 
-int Modbus::writeRequest()
-{
+int Modbus::writeRequest() {
     m_port->readAll();
     logRequest();
     emit write(request);
-    return {}; //m_port->write(reinterpret_cast<const char*>(request.data()), request.size());
+    return {}; // m_port->write(reinterpret_cast<const char*>(request.data()), request.size());
 }
 
-bool Modbus::readAndCheck()
-{
+bool Modbus::readAndCheck() {
     if (semaphore.tryAcquire(5, m_timeout)
         && response.pdu().address == uint8_t(m_address)
-        && bool(response.pdu().functionCode & uint8_t { 0x80 })) {
+        && bool(response.pdu().functionCode & uint8_t{0x80})) {
         m_errorString = EnumHelper::toString(m_error = static_cast<Error>(response.data()[2]));
         qDebug() << "err response" << toHex(response).mid(0, 10 /*5 bytes only*/);
         return {};
@@ -176,13 +162,12 @@ bool Modbus::readAndCheck()
 
 int Modbus::readResponse(size_t count) { return semaphore.tryAcquire(count, m_timeout); }
 
-bool Modbus::checkCrc()
-{
+bool Modbus::checkCrc() {
     uint16_t crc1 = request.crc();
-    uint16_t crc2 = crc16({ request.data(), static_cast<size_t>(request.size() - 2) });
+    uint16_t crc2 = crc16({request.data(), static_cast<size_t>(request.size() - 2)});
     crc1 = ByteOrder::Swap2B()(crc1);
     const bool ok = crc1 == crc2;
     m_error = ok ? NoError : CrcError;
-    //qDebug() << m_error << crc1 << crc2;
+    // qDebug() << m_error << crc1 << crc2;
     return ok;
 }

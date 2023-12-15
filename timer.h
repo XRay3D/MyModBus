@@ -13,14 +13,14 @@ using minutes = std::ratio<60>;
 using hours = std::ratio<3600>;
 using std::is_same_v;
 template <class T = seconds>
-    requires //
-    is_same_v<T, nanoseconds> || //
+    requires                      //
+    is_same_v<T, nanoseconds> ||  //
     is_same_v<T, microseconds> || //
     is_same_v<T, milliseconds> || //
-    is_same_v<T, seconds> || //
-    is_same_v<T, minutes> || //
-    is_same_v<T, hours> //
-    struct Timer {
+    is_same_v<T, seconds> ||      //
+    is_same_v<T, minutes> ||      //
+    is_same_v<T, hours>           //
+struct Timer {
 #ifdef __gnu_linux__
     const std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds> t1;
 #else
@@ -30,17 +30,15 @@ template <class T = seconds>
     static inline std::map<std::string_view, std::pair<size_t, double>> avgMap;
 
     constexpr Timer(std::string_view name, T = {})
-        : t1 { std::chrono::high_resolution_clock::now() }
-        , stringView { name }
-    {
+        : t1{std::chrono::high_resolution_clock::now()}
+        , stringView{name} {
     }
 
-    ~Timer()
-    {
+    ~Timer() {
         using std::chrono::duration;
         using std::chrono::high_resolution_clock;
 
-        duration<double, T> timeout { high_resolution_clock::now() - t1 };
+        duration<double, T> timeout{high_resolution_clock::now() - t1};
 
         auto& [ctr, avg] = avgMap[stringView];
         avg += timeout.count();

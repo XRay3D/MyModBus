@@ -15,8 +15,7 @@ class SLCModel : public QAbstractTableModel {
 public:
     SLCModel(HoldingRegisters::SetLinaCoef& slc, QWidget* parent)
         : QAbstractTableModel(parent)
-        , slc(slc)
-    {
+        , slc(slc) {
     }
     ~SLCModel() { }
 
@@ -25,8 +24,7 @@ public:
     int columnCount(const QModelIndex&) const override { return size(slc.coef[0].f); }
     Qt::ItemFlags flags(const QModelIndex&) const override { return Qt::ItemIsEditable | Qt::ItemIsSelectable | Qt::ItemIsEnabled; }
 
-    QVariant data(const QModelIndex& index, int role) const override
-    {
+    QVariant data(const QModelIndex& index, int role) const override {
         if (role == Qt::DisplayRole || role == Qt::EditRole)
             return slc.coef[index.row()].f[index.column()];
         if (role == Qt::TextAlignmentRole)
@@ -34,8 +32,7 @@ public:
         return {};
     }
 
-    bool setData(const QModelIndex& index, const QVariant& value, int role) override
-    {
+    bool setData(const QModelIndex& index, const QVariant& value, int role) override {
         if (role == Qt::EditRole) {
             slc.coef[index.row()].f[index.column()] = value.toFloat();
             return true;
@@ -46,17 +43,16 @@ public:
 
 namespace HoldingRegisters {
 
-QVariant Data::toVariant() const
-{
+QVariant Data::toVariant() const {
     return std::visit([](auto&& arg) {
         using T = std::decay_t<decltype(arg)>;
         /*  */ if constexpr (std::is_same_v<T, Text>) {
             return QVariant::fromValue(QString::fromLocal8Bit(arg.data, sizeof(T)));
         } else if constexpr (std::is_same_v<T, SetLinaCoef>) {
             QString str;
-            for (auto& lc : arg) {
+            for (auto& lc: arg) {
                 str += "{";
-                for (auto& f : lc)
+                for (auto& f: lc)
                     str += QString::number(f) + ",";
                 str += "},";
             }
@@ -68,8 +64,7 @@ QVariant Data::toVariant() const
         data);
 }
 
-void Data::fromVariant(const QVariant& value)
-{
+void Data::fromVariant(const QVariant& value) {
     std::visit([&value](auto&& arg) {
         using T = std::decay_t<decltype(arg)>;
         if constexpr (std::is_same_v<T, Text>) {
@@ -83,8 +78,7 @@ void Data::fromVariant(const QVariant& value)
         data);
 }
 
-void Data::setModelData(QWidget* editor)
-{
+void Data::setModelData(QWidget* editor) {
     qDebug(__FUNCTION__);
     return std::visit([this, editor](auto&& arg) {
         using T = std::decay_t<decltype(arg)>;
@@ -96,13 +90,12 @@ void Data::setModelData(QWidget* editor)
             auto sbx = qobject_cast<QDoubleSpinBox*>(editor);
             arg = sbx->value();
         }
-        I::mymodbus()->writeHoldingRegisters(id, arg, ByteOrder::ABCD {});
+        I::mymodbus()->writeHoldingRegisters(id, arg, ByteOrder::ABCD{});
     },
         const_cast<variant&>(data));
 }
 
-QWidget* Data::createEditor(QWidget* parent, const QStyleOptionViewItem& /*style*/) const
-{
+QWidget* Data::createEditor(QWidget* parent, const QStyleOptionViewItem& /*style*/) const {
     QWidget* w = nullptr;
     switch (data.index()) {
     case 0:
@@ -121,8 +114,7 @@ QWidget* Data::createEditor(QWidget* parent, const QStyleOptionViewItem& /*style
     return w;
 }
 
-void Data::setEditorData(QWidget* editor) const
-{
+void Data::setEditorData(QWidget* editor) const {
     return std::visit([editor](auto&& arg) {
         using T = std::decay_t<decltype(arg)>;
         /*  */ if constexpr (std::is_integral_v<T>) {
@@ -157,4 +149,4 @@ void Data::setEditorData(QWidget* editor) const
         const_cast<variant&>(data));
 }
 
-} // namespace Reg
+} // namespace HoldingRegisters

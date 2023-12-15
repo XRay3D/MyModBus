@@ -1,6 +1,6 @@
 #include "hldreg_delegate.h"
-#include "interface.h"
 #include "hldreg_model.h"
+#include "interface.h"
 #include <QDoubleSpinBox>
 #include <QLineEdit>
 #include <QSpinBox>
@@ -24,4 +24,4 @@ void ItemDelegate::setModelData(QWidget* editor, QAbstractItemModel*, const QMod
     return index.data(Qt::UserRole).value<HoldingRegisters::Data*>()->setModelData(editor);
 }
 
-} // namespace Reg
+} // namespace HoldingRegisters

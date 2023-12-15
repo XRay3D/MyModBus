@@ -4,7 +4,7 @@
 namespace HoldingRegisters {
 
 class ItemDelegate : public QStyledItemDelegate {
-    //Q_OBJECT
+    // Q_OBJECT
 public:
     ItemDelegate(QWidget* parent);
     ~ItemDelegate();
@@ -14,4 +14,4 @@ public:
     void setEditorData(QWidget* editor, const QModelIndex& index) const override;
 };
 
-} // namespace Reg
+} // namespace HoldingRegisters

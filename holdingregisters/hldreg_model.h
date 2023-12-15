@@ -44,15 +44,14 @@ public:
     const Data::variant& data(uint row) const;
     Data::ID id(uint row) const;
 
-    QStringList m_acces { "ReadOnly", "ReadWrite", "All" };
+    QStringList m_acces{"ReadOnly", "ReadWrite", "All"};
     QStringList m_type;
     const QStringList& acces() const;
     const QStringList& type() const;
 };
 
-inline Data::variant& toRVariant(const QModelIndex& index)
-{
+inline Data::variant& toRVariant(const QModelIndex& index) {
     return index.siblingAtColumn(Model::Value).data(Qt::UserRole).value<Data*>()->data;
 }
 
-} // namespace Reg
+} // namespace HoldingRegisters

@@ -10,7 +10,9 @@ struct Data {
         ReadWrite
     };
     Q_ENUM(Acces)
-    enum { Offset = 1 };
+    enum {
+        Offset = 1
+    };
     enum ID : uint16_t {
         DI_00,
         DI_01,
@@ -31,9 +33,9 @@ struct Data {
     Q_ENUM(ID)
 
     ID id;
-    bool data {};
+    bool data{};
     const Acces acces = ReadOnly;
-    QString error {};
+    QString error{};
 
     //    QVariant toVariant() const;
     //    void fromVariant(const QVariant& value);
@@ -70,6 +72,6 @@ public:
     QVariant headerData(int section, Qt::Orientation orientation, int role) const override;
     Qt::ItemFlags flags(const QModelIndex& index) const override;
 };
-}
+} // namespace DiscreteInputs
 
 Q_DECLARE_METATYPE(DiscreteInputs::Data)

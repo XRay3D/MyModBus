@@ -4,13 +4,12 @@
 #include <QApplication>
 #include <QDir>
 #include <QLoggingCategory>
-//#include <QQmlApplicationEngine>
-//#include <QQmlContext>
+// #include <QQmlApplicationEngine>
+// #include <QQmlContext>
 #include <QSettings>
 #include <QTranslator>
 
-int main(int argc, char* argv[])
-{
+int main(int argc, char* argv[]) {
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
 #endif
@@ -33,7 +32,7 @@ int main(int argc, char* argv[])
 
     QDir dir(app.applicationDirPath().endsWith("/bin") ? app.applicationDirPath() + "/../" : app.applicationDirPath() + "/translations");
 
-    for (const QString& str : dir.entryList(QStringList { "*ru_RU.qm" }, QDir::Files)) {
+    for (const QString& str: dir.entryList(QStringList{"*ru_RU.qm"}, QDir::Files)) {
         translators.emplace_back(std::make_unique<QTranslator>());
         if (translators.back()->load(str, dir.path()))
             app.installTranslator(translators.back().get());

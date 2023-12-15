@@ -8,15 +8,15 @@ class QStyleOptionViewItem;
 
 namespace InputRegisters {
 
-//auto getType(auto&& arg) {
-//    struct {
-//        using type = std::decay_t<decltype(arg)>;
-//    } s;
-//    return s;
-//}
+// auto getType(auto&& arg) {
+//     struct {
+//         using type = std::decay_t<decltype(arg)>;
+//     } s;
+//     return s;
+// }
 
 struct Text {
-    char data[16] {};
+    char data[16]{};
 };
 
 struct LinaCoef {
@@ -40,7 +40,9 @@ struct Data {
         ReadWrite
     };
     Q_ENUM(Acces)
-    enum { Offset = 1 };
+    enum {
+        Offset = 1
+    };
     enum ID : uint16_t {
         REG_01 = 0x0000,
         REG_02 = REG_01 + Offset,
@@ -180,7 +182,7 @@ struct Data {
     ID id;
     variant data;
     Acces acces;
-    QString error {};
+    QString error{};
 
     QVariant toVariant() const;
 
@@ -195,7 +197,7 @@ struct Data {
     Q_GADGET
 };
 
-} // namespace Reg
+} // namespace InputRegisters
 
 Q_DECLARE_METATYPE(InputRegisters::Text)
 Q_DECLARE_METATYPE(InputRegisters::Data)

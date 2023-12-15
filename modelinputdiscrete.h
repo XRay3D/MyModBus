@@ -2,13 +2,10 @@
 
 #include <QObject>
 
-class ModelInputDiscrete : public QObject
-{
+class ModelInputDiscrete : public QObject {
     Q_OBJECT
 public:
-    explicit ModelInputDiscrete(QObject *parent = nullptr);
+    explicit ModelInputDiscrete(QObject* parent = nullptr);
 
 signals:
-
 };
-

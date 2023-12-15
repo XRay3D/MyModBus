@@ -1,6 +1,5 @@
 #include "modelinputregisters.h"
 
-ModelInputRegisters::ModelInputRegisters(QObject *parent) : QObject(parent)
-{
-
+ModelInputRegisters::ModelInputRegisters(QObject* parent)
+    : QObject(parent) {
 }

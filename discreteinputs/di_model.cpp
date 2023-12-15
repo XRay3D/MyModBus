@@ -8,7 +8,7 @@ namespace DiscreteInputs {
 
 Model::Model(QObject* parent)
     : QAbstractTableModel(parent)
-    , m_data {
+    , m_data{
           {Data::DI_00},
           {Data::DI_01},
           {Data::DI_02},
@@ -29,8 +29,8 @@ Model::Model(QObject* parent)
 
 QVariant Model::data(const QModelIndex& index, int role) const {
     auto& data = m_data[index.row()];
-    if(role == Qt::DisplayRole) {
-        switch(index.column()) {
+    if (role == Qt::DisplayRole) {
+        switch (index.column()) {
         case Name:
             return EnumHelper::toString(data.id);
         case Id:
@@ -44,8 +44,8 @@ QVariant Model::data(const QModelIndex& index, int role) const {
         case Error:
             return data.error;
         }
-    } else if(role == Qt::UserRole) {
-        switch(index.column()) {
+    } else if (role == Qt::UserRole) {
+        switch (index.column()) {
         case Name:
             return EnumHelper::toString(data.id);
         case Id:
@@ -59,11 +59,11 @@ QVariant Model::data(const QModelIndex& index, int role) const {
         case Error:
             return data.error;
         }
-    } else if(role == Qt::EditRole && index.column() == Value)
+    } else if (role == Qt::EditRole && index.column() == Value)
         return data.data; //        return std::visit([](auto&& arg) { return QVariant::fromValue(arg); }, data.data);
-    else if(role == Qt::TextAlignmentRole && index.column())
+    else if (role == Qt::TextAlignmentRole && index.column())
         return Qt::AlignCenter;
-    else if(role == Qt::BackgroundRole && index.column() == Value)
+    else if (role == Qt::BackgroundRole && index.column() == Value)
         return data.data ? QColor(0x7F, 0xFF, 0x7F)
                          : QColor(0xFF, 0x7F, 0x7F);
     return {};
@@ -72,8 +72,8 @@ QVariant Model::data(const QModelIndex& index, int role) const {
 bool Model::setData(const QModelIndex& index, const QVariant& value, int role) {
     auto& data = m_data[index.row()];
     qDebug() << sender();
-    if(role == Qt::EditRole && index.column() == Value) {
-        if(I::mymodbus()->writeSingleCoil(data.id, value.toUInt())) {
+    if (role == Qt::EditRole && index.column() == Value) {
+        if (I::mymodbus()->writeSingleCoil(data.id, value.toUInt())) {
             data.data = value.toUInt();
             return true;
         } else {
@@ -81,10 +81,10 @@ bool Model::setData(const QModelIndex& index, const QVariant& value, int role) {
             return {};
         }
     }
-    if(role == Qt::UserRole && index.column() == Value) {
+    if (role == Qt::UserRole && index.column() == Value) {
         data.data = value.toUInt();
         return true;
-    } else if(role == Qt::EditRole && index.column() == Error) {
+    } else if (role == Qt::EditRole && index.column() == Error) {
         data.error = value.toString();
         return true;
     }
@@ -92,9 +92,9 @@ bool Model::setData(const QModelIndex& index, const QVariant& value, int role) {
 }
 
 QVariant Model::headerData(int section, Qt::Orientation orientation, int role) const {
-    if(role == Qt::DisplayRole && orientation == Qt::Horizontal)
+    if (role == Qt::DisplayRole && orientation == Qt::Horizontal)
         return EnumHelper::toString(Columns(section));
-    else if(role == Qt::TextAlignmentRole)
+    else if (role == Qt::TextAlignmentRole)
         return Qt::AlignCenter;
     return QAbstractTableModel::headerData(section, orientation, role);
 }
@@ -102,8 +102,8 @@ QVariant Model::headerData(int section, Qt::Orientation orientation, int role) c
 Qt::ItemFlags Model::flags(const QModelIndex& index) const {
     auto& data = m_data[index.row()];
     Qt::ItemFlags flags = Qt::ItemIsEnabled | Qt::ItemIsSelectable;
-    if(index.column() == Value && data.acces == Data::ReadWrite)
+    if (index.column() == Value && data.acces == Data::ReadWrite)
         flags |= Qt::ItemIsEditable;
     return flags;
 }
-};
+}; // namespace DiscreteInputs

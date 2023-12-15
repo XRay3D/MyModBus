@@ -17,22 +17,19 @@ namespace ByteOrder {
 
 struct Swap2B {
     template <size_t S>
-    Swap2B(std::array<uint16_t, S>& values)
-    {
-        for (auto& v : values) {
-            U u { .u16 = v };
+    Swap2B(std::array<uint16_t, S>& values) {
+        for (auto& v: values) {
+            U u{.u16 = v};
             std::swap(u.u8[0], u.u8[1]);
         }
     }
     Swap2B() { }
-    Swap2B(uint16_t& val)
-    {
-        U u { .u16 = val };
+    Swap2B(uint16_t& val) {
+        U u{.u16 = val};
         std::swap(u.u8[0], u.u8[1]);
     }
-    uint16_t operator()(uint16_t& val)
-    {
-        U u { .u16 = val };
+    uint16_t operator()(uint16_t& val) {
+        U u{.u16 = val};
         std::swap(u.u8[0], u.u8[1]);
         return u.u16;
     }
@@ -66,14 +63,13 @@ using CDAB = Reverse16;
 using DCBA = Reverse8;
 
 template <class T, class ByteOrdering>
-void reorder(T& reg, ByteOrdering)
-{
+void reorder(T& reg, ByteOrdering) {
     if constexpr (std::is_same_v<NoReorder, ByteOrdering>)
         return;
     constexpr uint16_t size = sizeof(std::decay_t<T>) / 2;
     using Array = std::array<uint16_t, size>;
     union U {
-        Array data16 {};
+        Array data16{};
         T val;
     } u;
     u.val = reg;
@@ -81,7 +77,7 @@ void reorder(T& reg, ByteOrdering)
     reg = u.val;
 }
 
-}
+} // namespace ByteOrder
 
 #pragma pack(push, 1)
 
@@ -90,12 +86,12 @@ struct PDU {
     uint8_t functionCode;
     union {
         struct ADU1 {
-            //uint8_t functionCode;
+            // uint8_t functionCode;
             uint8_t size;
             uint8_t data[1];
         } adu1;
         struct ADU2 {
-            //uint8_t functionCode;
+            // uint8_t functionCode;
             uint8_t data[1];
         } adu2;
     };
@@ -116,12 +112,14 @@ struct ByteVector : std::vector<uint8_t> {
 
 #else
 class ByteVector {
-    enum { MaxSize = 512 };
+    enum {
+        MaxSize = 512
+    };
     union U {
-        uint8_t data[MaxSize] {};
+        uint8_t data[MaxSize]{};
         PDU pdu;
-    } u {};
-    uint16_t size_ {};
+    } u{};
+    uint16_t size_{};
 
 public:
     ByteVector() { }
@@ -137,46 +135,40 @@ public:
     auto end() const noexcept { return u.data + size_; }
     auto end() noexcept { return u.data + size_; }
 
-    auto insert(uint8_t* insert, const uint8_t* begin, const uint8_t* end) noexcept
-    {
+    auto insert(uint8_t* insert, const uint8_t* begin, const uint8_t* end) noexcept {
         size_ += end - begin;
         while (begin < end)
             *insert++ = *begin++;
         return insert;
     }
 
-    void resize(uint16_t size) noexcept
-    {
-        if (size >= MaxSize) { //throw size;
+    void resize(uint16_t size) noexcept {
+        if (size >= MaxSize) { // throw size;
         }
         if (size_ < size)
             memset(u.data + size_, 0, size - size_);
         size_ = size;
     }
 
-    void emplace_back(uint8_t byte) noexcept
-    {
-        if (size_ >= MaxSize) { //throw size;
+    void emplace_back(uint8_t byte) noexcept {
+        if (size_ >= MaxSize) { // throw size;
         }
         u.data[size_] = byte;
         ++size_;
     }
 
-    auto operator[](uint16_t i) noexcept
-    {
-        if (i >= MaxSize) { //throw i;
+    auto operator[](uint16_t i) noexcept {
+        if (i >= MaxSize) { // throw i;
         }
         return (u.data[i]);
     }
-    const auto operator[](uint16_t i) const noexcept
-    {
-        if (i >= MaxSize) { //throw i;
+    const auto operator[](uint16_t i) const noexcept {
+        if (i >= MaxSize) { // throw i;
         }
         return (u.data[i]);
     }
 
-    void clear()
-    {
+    void clear() {
         memset(u.data, 0, MaxSize);
         size_ = {};
     }

@@ -6,19 +6,19 @@
 
 namespace rng = std::ranges;
 
-//class SLCModel : public QAbstractTableModel {
-//    InputRegisters::SetLinaCoef& slc;
+// class SLCModel : public QAbstractTableModel {
+//     InputRegisters::SetLinaCoef& slc;
 
 //    template <class T, size_t N>
 //    constexpr size_t size(T (&)[N]) const { return N; }
 
-//public:
-//    SLCModel(InputRegisters::SetLinaCoef& slc, QWidget* parent)
-//        : QAbstractTableModel(parent)
-//        , slc(slc)
-//    {
-//    }
-//    ~SLCModel() { }
+// public:
+//     SLCModel(InputRegisters::SetLinaCoef& slc, QWidget* parent)
+//         : QAbstractTableModel(parent)
+//         , slc(slc)
+//     {
+//     }
+//     ~SLCModel() { }
 
 //    // QAbstractItemModel interface
 //    int rowCount(const QModelIndex&) const override { return size(slc.coef); }
@@ -46,17 +46,16 @@ namespace rng = std::ranges;
 
 namespace InputRegisters {
 
-QVariant Data::toVariant() const
-{
+QVariant Data::toVariant() const {
     return std::visit([](auto&& arg) {
         using T = std::decay_t<decltype(arg)>;
         /*  */ if constexpr (std::is_same_v<T, Text>) {
             return QVariant::fromValue(QString::fromLocal8Bit(arg.data, sizeof(T)));
         } else if constexpr (std::is_same_v<T, SetLinaCoef>) {
             QString str;
-            for (auto& lc : arg) {
+            for (auto& lc: arg) {
                 str += "{";
-                for (auto& f : lc)
+                for (auto& f: lc)
                     str += QString::number(f) + ",";
                 str += "},";
             }
@@ -68,8 +67,7 @@ QVariant Data::toVariant() const
         data);
 }
 
-void Data::fromVariant(const QVariant& value)
-{
+void Data::fromVariant(const QVariant& value) {
     std::visit([&value](auto&& arg) {
         using T = std::decay_t<decltype(arg)>;
         if constexpr (std::is_same_v<T, Text>) {
@@ -83,8 +81,7 @@ void Data::fromVariant(const QVariant& value)
         data);
 }
 
-void Data::setModelData(QWidget* editor)
-{
+void Data::setModelData(QWidget* editor) {
     qDebug(__FUNCTION__);
     return std::visit([this, editor](auto&& arg) {
         using T = std::decay_t<decltype(arg)>;
@@ -101,8 +98,7 @@ void Data::setModelData(QWidget* editor)
         const_cast<variant&>(data));
 }
 
-QWidget* Data::createEditor(QWidget* parent, const QStyleOptionViewItem& /*style*/) const
-{
+QWidget* Data::createEditor(QWidget* parent, const QStyleOptionViewItem& /*style*/) const {
     QWidget* w = nullptr;
     switch (data.index()) {
     case 0:
@@ -121,8 +117,7 @@ QWidget* Data::createEditor(QWidget* parent, const QStyleOptionViewItem& /*style
     return w;
 }
 
-void Data::setEditorData(QWidget* editor) const
-{
+void Data::setEditorData(QWidget* editor) const {
     return std::visit([editor](auto&& arg) {
         using T = std::decay_t<decltype(arg)>;
         /*  */ if constexpr (std::is_integral_v<T>) {
@@ -157,4 +152,4 @@ void Data::setEditorData(QWidget* editor) const
         const_cast<variant&>(data));
 }
 
-} // namespace Reg
+} // namespace InputRegisters

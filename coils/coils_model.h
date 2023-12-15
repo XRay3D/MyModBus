@@ -8,7 +8,9 @@ struct Data {
         ReadWrite
     };
     Q_ENUM(Acces)
-    enum { Offset = 1 };
+    enum {
+        Offset = 1
+    };
     enum ID : uint16_t {
         COIL_00,
         COIL_01,
@@ -29,9 +31,9 @@ struct Data {
     Q_ENUM(ID)
 
     ID id;
-    bool data {};
+    bool data{};
     Acces acces = ReadWrite;
-    QString error {};
+    QString error{};
 
     //    QVariant toVariant() const;
     //    void fromVariant(const QVariant& value);
@@ -68,6 +70,6 @@ public:
     QVariant headerData(int section, Qt::Orientation orientation, int role) const override;
     Qt::ItemFlags flags(const QModelIndex& index) const override;
 };
-}
+} // namespace Coils
 
 Q_DECLARE_METATYPE(Coils::Data)

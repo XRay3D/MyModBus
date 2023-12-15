@@ -3,16 +3,16 @@
 #include <memory>
 #include <stdint.h>
 
-#define CMMON_DEV_TYPE 81
-#define CMMON_MODEL 0x0001
-#define CMMON_SN 0x0123
-#define CMMON_VERHARD 0x01
-#define CMMON_VERSOFT 0x12
-#define COMMON_DAY 23
-#define COMMON_MONTH 02
-#define COMMON_YEAR 2015
+#define CMMON_DEV_TYPE      81
+#define CMMON_MODEL         0x0001
+#define CMMON_SN            0x0123
+#define CMMON_VERHARD       0x01
+#define CMMON_VERSOFT       0x12
+#define COMMON_DAY          23
+#define COMMON_MONTH        02
+#define COMMON_YEAR         2015
 #define DB_FIX_BASE_ADDRESS 0
-#define SIZE_HEADER 110
+#define SIZE_HEADER         110
 
 using ptr = uint8_t*;
 using rcode = uint16_t;
@@ -277,7 +277,7 @@ rcode DB_GetPar(ID bId, ptr pPar, uint8_t bSize);
 void CheckApplay(void) {
     uint16_t wTmp;
     DB_GetPar(ID_PAR_APPLAY_TDC, (ptr)&wTmp, sizeof(uint16_t));
-    if(wTmp) {
+    if (wTmp) {
         wTmp = 0;
         DB_PutPar(ID_PAR_APPLAY_TDC, (ptr)&wTmp);
     }
@@ -296,7 +296,7 @@ void memcpyFloat(ptr pTo, ptr pFrom) {
 
 void ToFrom50(uint16_t* pTo, uint16_t* pFrom) {
     uint16_t i;
-    for(i = 0; i < 50; i++)
+    for (i = 0; i < 50; i++)
         pTo[i] = pFrom[i];
 }
 
@@ -310,32 +310,32 @@ void memcpy32(ptr pTo, ptr pFrom) {
 void ConvertTxt(ptr pTo, ptr pFrom, uint16_t len) {
     uint16_t i = len / 2;
     char t;
-    for(i = 0; i < len / 2; i++) {
+    for (i = 0; i < len / 2; i++) {
         t = *(pTo + 0 + i * 2);
         *(pTo + 0 + i * 2) = *(pFrom + 1 + i * 2);
         *(pTo + 1 + i * 2) = t;
     }
 }
 
-//static void ReadData(uint16_t wAddr, ptr p, size_t Size) {
-//    size_t i;
-//    for(i = 0; Size--; i++) {
-//        *(p + i) = EE_DataRead(wAddr++);
-//    }
-//    return;
-//}
+// static void ReadData(uint16_t wAddr, ptr p, size_t Size) {
+//     size_t i;
+//     for(i = 0; Size--; i++) {
+//         *(p + i) = EE_DataRead(wAddr++);
+//     }
+//     return;
+// }
 
-//static void WriteData(uint16_t wAddr, ptr p, size_t Size) {
-//    size_t i;
-//    for(i = 0; Size--; i++)
-//        EE_DataWrite(*(p + i), wAddr++);
-//    EE_DataSetCRC7();
-//    return;
-//}
+// static void WriteData(uint16_t wAddr, ptr p, size_t Size) {
+//     size_t i;
+//     for(i = 0; Size--; i++)
+//         EE_DataWrite(*(p + i), wAddr++);
+//     EE_DataSetCRC7();
+//     return;
+// }
 
 // const t_RMU30_Params cParams;
 
-//void DB_Init(void) {
+// void DB_Init(void) {
 
 //    if(!EE_DataCalc()) {
 //        WriteData(0, (ptr)&cParams, sizeof(t_RMU30_Params));
@@ -365,15 +365,15 @@ void ConvertTxt(ptr pTo, ptr pFrom, uint16_t len) {
 //        Op(m);            \
 //    }
 
-//static rcode _DB_GetPar(uint8_t bId, ptr pPar, uint8_t bSize) {
-//    RW_PAR(READ_PAR);
-//    return (-1);
-//}
+// static rcode _DB_GetPar(uint8_t bId, ptr pPar, uint8_t bSize) {
+//     RW_PAR(READ_PAR);
+//     return (-1);
+// }
 
-//static bool _DB_PutPar(uint8_t bId, ptr pPar) {
-//    RW_PAR(WRITE_PAR);
-//    return (TRUE);
-//}
+// static bool _DB_PutPar(uint8_t bId, ptr pPar) {
+//     RW_PAR(WRITE_PAR);
+//     return (TRUE);
+// }
 
 void* memcpy(void* _Dst, void const* _Src, size_t _Size);
 uint16_t _DB_GetPar(ID bId, ptr pPar, uint8_t bSize);
@@ -384,7 +384,7 @@ rcode DB_GetPar(ID bId, ptr pPar, uint8_t bSize) {
     uint16_t tmp16 = 0;
     float tmpFloat = 0;
 
-    switch(bId) {
+    switch (bId) {
     case ID_PAR_SPEED:
         tmp16 = 6;
         memcpy(pPar, &tmp16, sizeof(uint16_t));
@@ -431,7 +431,7 @@ rcode DB_GetPar(ID bId, ptr pPar, uint8_t bSize) {
         size = sizeof(float);
         break;
     case ID_PAR_VF_STAT_1:
-        if(errCodeGlob)
+        if (errCodeGlob)
             tmp16 = (1 << 12);
         memcpy(pPar, &tmp16, sizeof(uint16_t));
         size = sizeof(uint16_t);
@@ -920,7 +920,7 @@ rcode DB_GetPar(ID bId, ptr pPar, uint8_t bSize) {
         size = sizeof(uint16_t);
         break;
     default:
-        //size = _DB_GetPar(bId, pPar, bSize)
+        // size = _DB_GetPar(bId, pPar, bSize)
         ;
     }
     return (size);
@@ -929,11 +929,11 @@ rcode DB_GetPar(ID bId, ptr pPar, uint8_t bSize) {
 rcode DB_PutPar(ID bId, ptr pPar) {
     bool size;
     size = 0;
-    if((ID_PAR_SPEED == bId) || (ID_PAR_ADDR == bId) || (ID_PAR_PARITY == bId)) {
+    if ((ID_PAR_SPEED == bId) || (ID_PAR_ADDR == bId) || (ID_PAR_PARITY == bId)) {
         fWtIniUart = 1;
     };
 
-    switch(bId) {
+    switch (bId) {
     case ID_BLOADER:
         memcpy(&wBootLoader, pPar, sizeof(uint16_t));
         break;
@@ -1078,7 +1078,7 @@ rcode DB_PutPar(ID bId, ptr pPar) {
         memcpy((uint8_t*)&LinaCoef.Coef[10], pPar, sizeof(stLinaCoef) * 10);
         break;
     default:
-        //size = _DB_PutPar(bId, pPar)
+        // size = _DB_PutPar(bId, pPar)
         ;
     }
     return (size);

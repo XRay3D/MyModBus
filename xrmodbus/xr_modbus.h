@@ -16,8 +16,7 @@ class Object : public QObject {
     Q_OBJECT
     friend class Modbus;
     Object(QObject* parent = nullptr)
-        : QObject { parent }
-    {
+        : QObject{parent} {
     }
 signals:
     void open();
@@ -25,8 +24,7 @@ signals:
     void write(const ByteVector& data);
 };
 
-inline auto toHex(const ByteVector& data)
-{
+inline auto toHex(const ByteVector& data) {
     return QByteArray(reinterpret_cast<const char*>(data.data()), data.size()).toHex('|').toUpper();
 }
 
@@ -38,13 +36,13 @@ class Modbus : public Object {
     template <typename T, size_t N>
     struct array_size {
         constexpr array_size(T (&)[N]) { }
-        constexpr array_size(T(&&)[N]) { }
+        constexpr array_size(T (&&)[N]) { }
         constexpr operator size_t() { return N; }
     };
     template <typename T, size_t N>
     array_size(T (&)[N]) -> array_size<T, N>;
     template <typename T, size_t N>
-    array_size(T(&&)[N]) -> array_size<T, N>;
+    array_size(T (&&)[N]) -> array_size<T, N>;
 
 public:
     explicit Modbus(QObject* parent = nullptr);
@@ -105,8 +103,7 @@ public:
 
     // HoldingRegisters
     template <class T, class ByteOrdering = ByteOrder::NoReorder>
-    bool readHoldingRegisters(uint16_t regAddress, T& regData, ByteOrdering ordering = {})
-    {
+    bool readHoldingRegisters(uint16_t regAddress, T& regData, ByteOrdering ordering = {}) {
         using Ty = std::decay_t<T>;
         constexpr uint16_t size = sizeof(Ty) / 2;
 
@@ -116,7 +113,7 @@ public:
         QApplication::processEvents();
         QMutexLocker locker(&mutex);
         Timer<milliseconds> t(__FUNCTION__);
-        bool ok {};
+        bool ok{};
 
         prepare();
 
@@ -145,8 +142,7 @@ public:
     }
 
     template <class T, class ByteOrdering = ByteOrder::NoReorder>
-    bool writeHoldingRegisters(uint16_t regAddress, T&& regData, ByteOrdering ordering = {})
-    {
+    bool writeHoldingRegisters(uint16_t regAddress, T&& regData, ByteOrdering ordering = {}) {
         using Ty = std::decay_t<T>;
         constexpr uint16_t size = sizeof(Ty) / 2;
         static_assert(!(sizeof(Ty) % 2), "bad data alinment");
@@ -155,7 +151,7 @@ public:
         QApplication::processEvents();
         QMutexLocker locker(&mutex);
         Timer t(__FUNCTION__);
-        bool ok {};
+        bool ok{};
 
         prepare();
 
@@ -193,8 +189,7 @@ public:
 
     // ReadInputRegisters
     template <class T, class ByteOrdering = ByteOrder::NoReorder>
-    bool readInputRegisters(uint16_t regAddress, T& regData, ByteOrdering ordering = {})
-    {
+    bool readInputRegisters(uint16_t regAddress, T& regData, ByteOrdering ordering = {}) {
         using Ty = std::decay_t<T>;
         constexpr uint16_t size = sizeof(Ty) / 2;
         static_assert(!(sizeof(Ty) % 2), "bad data alinment");
@@ -203,7 +198,7 @@ public:
         QApplication::processEvents();
         QMutexLocker locker(&mutex);
         Timer t(__FUNCTION__);
-        bool ok {};
+        bool ok{};
 
         prepare();
         { // write
@@ -232,12 +227,11 @@ public:
 
     // Coils
     template <class T>
-    bool readCoils(uint16_t regAddress, T& coils)
-    {
+    bool readCoils(uint16_t regAddress, T& coils) {
         QApplication::processEvents();
         QMutexLocker locker(&mutex);
         Timer t(__FUNCTION__);
-        bool ok {};
+        bool ok{};
 
         prepare();
 
@@ -262,9 +256,9 @@ public:
             if (!checkCrc())
                 break;
             if constexpr (/*std::size(coils) || */ std::is_array_v<T>) {
-                int ctr {};
-                for (uint8_t c : std::span<uint8_t> { response.pdu().adu1.data, size }) {
-                    uint8_t m { 0x01 };
+                int ctr{};
+                for (uint8_t c: std::span<uint8_t>{response.pdu().adu1.data, size}) {
+                    uint8_t m{0x01};
                     for (int i = 1; i < 8; ++i, m <<= 1) {
                         coils[ctr++] = static_cast<bool>(c & m);
                         if (ctr == std::size(coils))
@@ -282,13 +276,12 @@ public:
     }
 
     template <class T>
-    bool writeSingleCoil(uint16_t regAddress, T&& coils)
-    {
+    bool writeSingleCoil(uint16_t regAddress, T&& coils) {
         QApplication::processEvents();
         QMutexLocker locker(&mutex);
 
         Timer t(__FUNCTION__);
-        bool ok {};
+        bool ok{};
 
         prepare();
         { // write
@@ -315,15 +308,16 @@ public:
     }
 
     template <class T>
-    bool writeMultipleCoils(uint16_t regAddress, T& coils) requires std::is_array_v<T>
+    bool writeMultipleCoils(uint16_t regAddress, T& coils)
+        requires std::is_array_v<T>
     {
-        constexpr size_t coilsCount = array_size(T {});
+        constexpr size_t coilsCount = array_size(T{});
         constexpr uint8_t dataSize = coilsCount / 8 + (coilsCount % 8 ? 1 : 0);
 
         QApplication::processEvents();
         QMutexLocker locker(&mutex);
         Timer t(__FUNCTION__);
-        bool ok {};
+        bool ok{};
 
         prepare();
         { // write
@@ -331,10 +325,10 @@ public:
             setStartOfRequest(m_address, WriteMultipleCoils, regAddress);
             addToRequest16(static_cast<uint16_t>(coilsCount));
 
-            uint8_t data[dataSize] {};
+            uint8_t data[dataSize]{};
 
-            int ctr {};
-            for (auto&& c : data) {
+            int ctr{};
+            for (auto&& c: data) {
                 for (int m = 1; m < 0x100; m <<= 1) {
                     if (coils[ctr++])
                         c |= m;
@@ -369,13 +363,12 @@ public:
 
     // DiscreteInputs
     template <class T>
-    bool readDiscreteInputs(uint16_t regAddress, T& coils)
-    {
+    bool readDiscreteInputs(uint16_t regAddress, T& coils) {
         QApplication::processEvents();
         QMutexLocker locker(&mutex);
 
         Timer t(__FUNCTION__);
-        bool ok {};
+        bool ok{};
 
         prepare();
         { // write
@@ -400,9 +393,9 @@ public:
             if (!checkCrc())
                 break;
             if constexpr (/*std::size(coils) || */ std::is_array_v<T>) {
-                int ctr {};
-                for (uint8_t c : std::span<uint8_t> { response.pdu().adu1.data, size }) {
-                    uint8_t m { 0x01 };
+                int ctr{};
+                for (uint8_t c: std::span<uint8_t>{response.pdu().adu1.data, size}) {
+                    uint8_t m{0x01};
                     for (int i = 1; i < 8; ++i, m <<= 1) {
                         coils[ctr++] = static_cast<bool>(c & m);
                         if (ctr == std::size(coils))
@@ -436,9 +429,9 @@ private:
     QThread portThread;
     QSerialPort* m_port;
 
-    int m_timeout { 1000 };
+    int m_timeout{1000};
 
-    uint8_t m_address { 1 };
+    uint8_t m_address{1};
     QString m_errorString;
 
     ByteVector request;
@@ -446,18 +439,16 @@ private:
 
     void prepare();
 
-    void addToRequest08(uint8_t data) { request.emplace_back(uint8_t { data }); }
+    void addToRequest08(uint8_t data) { request.emplace_back(uint8_t{data}); }
 
-    void addToRequest16(uint16_t data)
-    {
-        U u { .u16 = data };
+    void addToRequest16(uint16_t data) {
+        U u{.u16 = data};
         request.emplace_back(u.u8[1]);
         request.emplace_back(u.u8[0]);
     }
 
     template <class T>
-    void addToRequestT(T& data)
-    {
+    void addToRequestT(T& data) {
         auto begin = reinterpret_cast<const uint8_t*>(std::addressof(data));
         auto end = begin + sizeof(T);
         request.insert(request.end(), begin, end);
@@ -471,9 +462,8 @@ private:
     void logResponse() { qDebug() << "response" << toHex(response); }
 
     int writeRequest();
-    Error m_error { NoError };
-    void setStartOfRequest(uint8_t address, FunctionName function, uint16_t regAddress)
-    {
+    Error m_error{NoError};
+    void setStartOfRequest(uint8_t address, FunctionName function, uint16_t regAddress) {
         addToRequest08(address);
         addToRequest08(function);
         addToRequest16(regAddress);
